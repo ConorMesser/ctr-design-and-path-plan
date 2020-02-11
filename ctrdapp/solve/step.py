@@ -77,7 +77,10 @@ def get_single_tube_value(insert_rand, insert_neighbor, neighbor_parent, probabi
     neighbor_diff = array([n - p for n, p in zip(insert_neighbor, neighbor_parent)])
     if count_nonzero(neighbor_diff) > 1:
         raise ValueError("Multiple tubes inserted in neighbor node.")
-    last_insertion_tube_num = neighbor_diff.nonzero()[0][0]
+    elif count_nonzero(neighbor_diff) == 0:
+        last_insertion_tube_num = 0  # default to first tube (esp. for initial insertion)
+    else:
+        last_insertion_tube_num = neighbor_diff.nonzero()[0][0]
     possible_tubes = list(range(tube_num))
     possible_tubes.pop(last_insertion_tube_num)
 

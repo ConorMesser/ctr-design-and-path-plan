@@ -67,6 +67,8 @@ class DynamicTree:
             array giving the insertion values of the nearest neighbor
         int
             the index of the nearest neighbor (as stored in nodes array)
+        list of float
+            array giving the insertion values of the neighbor's parent
         """
 
         min_dist = float('inf')
@@ -81,7 +83,14 @@ class DynamicTree:
                     i_best = i
         final_ind = 2**i_best + loc_best - 1
         nodes_ind = self.map2nodes[final_ind]
-        return self.nodes[nodes_ind].insertion, nodes_ind
+        final_node = self.nodes[nodes_ind]
+
+        parent_ind = final_node.parent
+        if parent_ind is not None:
+            parent_node = self.nodes[parent_ind]
+        else:  # first node has no parent
+            parent_node = final_node
+        return final_node.insertion, nodes_ind, parent_node.insertion
 
     def insert(self, ins, rot, parent, heuristic, g_curves, insert_indices):
         """Inserts the new point into the tree with the given data and parent
@@ -250,7 +259,7 @@ class Node:
         insert_indices : list of int
             corresponds to index for "origin" SE3 array for each g_curve tube
         parent : int
-            index of parent in tree (default is none)
+            index of parent in node list (default is none)
 
         Raises
         ------

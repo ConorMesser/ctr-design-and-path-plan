@@ -1,6 +1,7 @@
 import json
 import pyvista as pv
 import numpy as np
+import time
 
 
 def parse_json(object_type, init_objects_file):
@@ -41,9 +42,12 @@ def parse_json(object_type, init_objects_file):
 
 def visualize_curve(curve, objects_file, tube_num, tube_rad, visualize_from_indices=None):
     plotter = pv.Plotter()
-    # plotter.open_movie("this_movie.mp4")  # todo
+    plotter.open_movie("this_movie.mp4")  # todo
 
     add_objects(plotter, objects_file)
+
+    plotter.show(auto_close=False, interactive_update=True)
+    plotter.write_frame()
 
     # plot each tube from root to final (only need p values, not R)
     # - plots of tubes must cut off the tube prior to insertion
@@ -51,8 +55,13 @@ def visualize_curve(curve, objects_file, tube_num, tube_rad, visualize_from_indi
     for i in range(len(curve)):
         this_time_step = curve[i]
         this_tube_actor = add_single_curve(plotter, this_time_step, tube_num, tube_rad, visualize_from_indices)
+        plotter.write_frame()
+        plotter.update()
+        time.sleep(0.3)
+        for a in this_tube_actor:
+            plotter.remove_actor(a)
 
-    plotter.show()
+    plotter.close()
 
 
 def visualize_curve_single(curve, objects_file, tube_num, tube_rad, visualize_from_indices=None):

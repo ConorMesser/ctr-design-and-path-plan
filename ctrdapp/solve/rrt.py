@@ -176,7 +176,7 @@ class RRT(Solver):
     def visualize_from_index_path(self, index, objects_file):
         g_out, insert, rotate, insert_indices = self.get_path(index)
         g_out_truncated = []
-        for g, ind in zip(g_out, insert_indices):
+        for g, ind in zip(reversed(g_out), reversed(insert_indices)):
             g_out_truncated.append(truncate_g(g, ind))
         visualize_curve(g_out_truncated, objects_file, self.tube_num, self.tube_rad)
 
