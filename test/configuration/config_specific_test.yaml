@@ -1,0 +1,28 @@
+# config_test.yaml file
+
+optimizer_type: "nelder_mead"
+solver_type: "rrt"
+model_type: "kinematic"
+heuristic_type: "square_obstacle_avg_plus_weighted_goal"
+optimizer_precision: 0.1
+tube_number: 2
+tube_radius: 3
+collision_objects_filename: "init_objects.json"
+
+# for rrt solver
+step_bound: 3
+insertion_max: 120
+nearest_neighbor_function: 2
+iteration_number: 2000
+
+# for rrt_star solver (in addition to rrt)
+  # rewire_probability: 0.1
+
+# for kinematic model
+q_dof: 3
+num_discrete_points: 101
+  # insertion_max: 120 - should match solver
+  # strain_base: specify anything? should get this from main, but what about for testing?
+
+# for obstacle weighted goal heuristic
+goal_weight: 3

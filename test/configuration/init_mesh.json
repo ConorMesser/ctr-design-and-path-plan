@@ -1,0 +1,29 @@
+{
+  "goal": [
+    {
+    "mesh": false,
+    "filename": null,
+    "shape": "Box",
+    "x_length": 1,
+    "y_length": 2,
+    "z_length": 3,
+    "transform": [
+      20,
+      0,
+      0
+    ]
+  }
+  ],
+  "obstacles": [
+    {
+      "mesh": true,
+      "filename": "mm_simple.STL",
+      "shape": null,
+      "transform": [
+        5,
+        0,
+        0
+      ]
+    }
+    ]
+}

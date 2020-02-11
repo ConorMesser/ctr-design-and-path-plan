@@ -1,0 +1,52 @@
+{
+  "goal": [
+    {
+    "mesh": false,
+    "filename": null,
+    "shape": "Sphere",
+    "radius": 10,
+    "transform": [
+      80,
+      10,
+      -5
+    ]
+  }
+  ],
+  "obstacles": [
+    {
+      "mesh": false,
+      "filename": null,
+      "shape": "Box",
+      "x_length": 2,
+      "y_length": 10,
+      "z_length": 10,
+      "transform": [
+        30,
+        20,
+        -10
+      ]
+    },
+    {
+      "mesh": false,
+      "filename": null,
+      "shape": "Sphere",
+      "radius": 10,
+      "transform": [
+        50,
+        -20,
+        15
+      ]
+    },
+    {
+      "mesh": false,
+      "filename": null,
+      "shape": "Sphere",
+      "radius": 10,
+      "transform": [
+        40,
+        -20,
+        -20
+      ]
+    }
+    ]
+}
