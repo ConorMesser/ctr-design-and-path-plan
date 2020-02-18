@@ -1,6 +1,7 @@
 import fcl
 from stl import mesh
 import json
+import numpy as np
 
 
 def add_goal(init_objects_file):
@@ -61,16 +62,55 @@ def parse_json(object_type, init_objects_file):
         else:
             if o.get('shape') == 'Sphere':
                 this_obj = fcl.Sphere(o.get('radius'))
+                this_transform = fcl.Transform(o.get('transform'))
             elif o.get('shape') == 'Cylinder':
                 this_obj = fcl.Cylinder(o.get('radius'), o.get('length'))
+
+                direction = o.get('direction')
+                rot = rotate_align(np.asarray(direction))
+                this_transform = fcl.Transform(rot, o.get('transform'))
             elif o.get('shape') == 'Box':
                 this_obj = fcl.Box(o.get('x_length'), o.get('y_length'), o.get('z_length'))
+                this_transform = fcl.Transform(o.get('transform'))
             else:
                 raise NotImplementedError(f'Shape type {o.get("shape")} not supported.')
 
-            this_transform = fcl.Transform(o.get('transform'))
             obj = fcl.CollisionObject(this_obj, this_transform)
 
         collision_objects.append(obj)
 
     return collision_objects
+
+
+def rotate_align(vector_to, vector_from=np.array([0, 0, 1])):
+    """Returns a rotation matrix to align the given vectors.
+
+    Adapted from Kevin Moran's article on noacos derivation which can be found:
+    https://gist.github.com/kevinmoran/b45980723e53edeb8a5a43c49f134724
+
+    Parameters
+    ----------
+    vector_to : numpy 3x1 array
+        The goal vector
+    vector_from : numpy 3x1 array
+        The initial vector, with a default of the z-axis unit vector
+
+    Returns
+    -------
+    3x3 numpy array : the rotation matrix to transform vector_from to vector_to
+    """
+    axis = np.cross(vector_from, vector_to)
+    cos_a = np.dot(vector_from, vector_to)
+    k = 1 / (1 + cos_a)
+
+    matrix = np.array([[(axis[0] * axis[0] * k) + cos_a,
+                        (axis[1] * axis[0] * k) - axis[2],
+                        (axis[2] * axis[0] * k) + axis[1]],
+                       [(axis[0] * axis[1] * k) + axis[2],
+                        (axis[1] * axis[1] * k) + cos_a,
+                        (axis[2] * axis[1] * k) - axis[0]],
+                       [(axis[0] * axis[2] * k) - axis[1],
+                        (axis[1] * axis[2] * k) + axis[0],
+                        (axis[2] * axis[2] * k) + cos_a]])
+
+    return matrix

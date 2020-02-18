@@ -2,8 +2,11 @@
   <dictionary name="conormesser">
     <words>
       <w>adjoint</w>
+      <w>fatol</w>
       <w>jacobian</w>
+      <w>maxfev</w>
       <w>nelder</w>
+      <w>xatol</w>
     </words>
   </dictionary>
 </component>

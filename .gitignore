@@ -101,3 +101,4 @@ dmypy.json
 
 # convenience testing
 test/test_integration.py
+test/configuration/config_integration.yaml

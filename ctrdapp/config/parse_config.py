@@ -4,7 +4,7 @@ import yaml
 def parse_config(file):
 
     general = ["tube_number", "tube_radius", "collision_objects_filename"]
-    optimizers = {"nelder_mead": ["optimizer_precision"]}
+    optimizers = {"nelder_mead": ["optimizer_precision", "optimize_iterations"]}
     solvers = {"rrt": ["step_bound", "nearest_neighbor_function",
                        "iteration_number", "insertion_max",
                        "single_tube_control"],
@@ -34,7 +34,8 @@ def parse_config(file):
                 "goal_weight": 2,
                 "q_dof": 3,
                 "num_discrete_points": 101,
-                "single_tube_control": True
+                "single_tube_control": True,
+                "optimize_iterations": 50
                 }
 
     with file.open(mode='r') as fid:

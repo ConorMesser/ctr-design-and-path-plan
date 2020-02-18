@@ -6,7 +6,7 @@ from random import random
 from .dynamic_tree import DynamicTree
 from .step import step, get_single_tube_value
 from ..heuristic.heuristic_factory import HeuristicFactory
-from .visualize_utils import visualize_curve, visualize_curve_single
+from .visualize_utils import visualize_curve, visualize_curve_single, visualize_tree
 from ..model.model import truncate_g
 
 
@@ -170,7 +170,7 @@ class RRT(Solver):
     def visualize_from_index(self, index, objects_file):
         g_out, insert, rotate, insert_indices = self.get_path(index)
         # get insert_indices from either insert or from model?
-        g_out_truncated = [truncate_g(g_out[0], insert_indices[0])]
+        g_out_truncated = truncate_g(g_out[0], insert_indices[0])
         visualize_curve_single(g_out_truncated, objects_file, self.tube_num, self.tube_rad)
 
     def visualize_from_index_path(self, index, objects_file):
@@ -180,5 +180,40 @@ class RRT(Solver):
             g_out_truncated.append(truncate_g(g, ind))
         visualize_curve(g_out_truncated, objects_file, self.tube_num, self.tube_rad)
 
-    def visualize_full_search(self):  # todo
-        pass
+    def visualize_full_search(self):  # todo how to make more useful?
+        # check how many dim (greater than 3 unsupported? todo)
+        if self.tube_num > 3:
+            pass
+
+        from_list = []
+        to_list = []
+        node_list = []
+        # start at root of tree
+        root_node = self.tree.nodes[0]
+        # collect from and to information, recur over children
+        for i in root_node.children:
+            child_from_l, child_to_l, children_nodes = self._tree_search_recur(
+                i, root_node.insertion)
+            from_list = from_list + child_from_l
+            to_list = to_list + child_to_l
+            node_list = node_list + children_nodes
+
+        visualize_tree(from_list, to_list, node_list)
+
+    def _tree_search_recur(self, child_index, parent_insertion):
+
+        this_child = self.tree.nodes[child_index]
+        from_list = [parent_insertion]
+        to_list = [this_child.insertion]
+        node_list = [child_index]
+
+        if not this_child.children:
+            return from_list, to_list, node_list
+        else:
+            for ind in this_child.children:
+                children_from, children_to, children_nodes = self._tree_search_recur(
+                    ind, this_child.insertion)
+                from_list = from_list + children_from
+                to_list = to_list + children_to
+                node_list = node_list + children_nodes
+            return from_list, to_list, node_list

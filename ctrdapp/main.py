@@ -1,16 +1,16 @@
 import pathlib
 import numpy as np
 
-from .config.parse_config import parse_config
-from .collision.collision_checker import CollisionChecker
-from .heuristic.heuristic_factory import create_heuristic_factory
-from .optimize.optimizer_factory import create_optimizer
+from ctrdapp.config.parse_config import parse_config
+from ctrdapp.collision.collision_checker import CollisionChecker
+from ctrdapp.heuristic.heuristic_factory import create_heuristic_factory
+from ctrdapp.optimize.optimizer_factory import create_optimizer
 
 
 def main():
 
     path = pathlib.Path().absolute()
-    file = path / "configuration" / "config.yaml"
+    file = path / "configuration" / "config_trial.yaml"
     configuration, dictionaries = parse_config(file)
     objects_file = path / "configuration" / configuration.get("collision_objects_filename")
     collision_detector = CollisionChecker(objects_file)
@@ -22,9 +22,24 @@ def main():
                                                  dictionaries.get("heuristic"))
 
     # initial guess  todo
-    initial_guess = [1] * (configuration.get('tube_number') * configuration.get('q_dof'))
+    initial_guess = [0.01] * (configuration.get('tube_number') * configuration.get('q_dof'))
 
     optimizer = create_optimizer(heuristic_factory, collision_detector,
                                  np.asarray(initial_guess), configuration)
 
-    optimizer.find_min()  # outputs what? todo
+    best_solver = optimizer.find_min()
+
+    # possibly rerun solver with a higher number of iterations
+    # (especially for rrt* or other optimizing ones) todo
+
+    solution_cost, solution_index = best_solver.get_best_cost()
+    solution_path = best_solver.get_path(solution_index)
+    # save path, best q, and cost todo
+
+    # interactive?? todo
+    best_solver.visualize_best_solution(objects_file)  # save picture todo
+    best_solver.visualize_best_solution_path(objects_file)  # save movie todo
+
+
+if __name__ == "__main__":
+    main()

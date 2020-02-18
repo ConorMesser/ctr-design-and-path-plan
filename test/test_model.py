@@ -270,3 +270,20 @@ class TestKinematic(unittest.TestCase):
         np.testing.assert_equal(insert_indices, [0])
 
         # test for q_dot and eta
+
+    def test_solve_once_speed(self):
+        a = np.eye(4)
+        a[0, 3] = -1
+        b = np.eye(4)
+        b[0, 3] = -0.5
+        c = np.eye(4)
+        g_3_no_strain = [[a, b, c]]
+
+        # zero insertion
+        for _ in range(5000):
+            g_test_backward, eta_test, insert_indices, true_insertions = self.no_strain1_rough.solve_once(
+                [0], [-0.501], [1], g_3_no_strain, invert_insert=False)
+
+    def test_solve_g_speed(self):
+        for _ in range(5000):
+            turn_g = self.constant_strain2.solve_g(indices=[0, 0], thetas=[0, math.pi/2])

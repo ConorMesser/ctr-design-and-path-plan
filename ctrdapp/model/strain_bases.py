@@ -2,6 +2,14 @@ import numpy as np
 from math import cos, sin
 
 
+def constant_strain(x, dof):
+    if dof > 1:
+        print(f'Only 1 degrees of freedom allowed for constant strain.')
+    base = np.zeros([6, dof])
+    base[1, 0] = 1  # constant y-bending
+    return base
+
+
 def linear_strain(x, dof):
     if dof > 3:
         print(f'Only 3 degrees of freedom are being used out of {dof}.')
@@ -28,8 +36,8 @@ def helix_strain(x, dof):
     if dof > 2:
         print(f'Only 2 degrees of freedom are being used out of {dof}.')
     base = np.zeros([6, dof])
-    base[1, 0] = sin(x)  # y-bending
-    base[2, 1] = cos(x)  # z-bending
+    base[1, 0] = sin(x/15)  # y-bending
+    base[2, 1] = x * cos(x/15)  # z-bending
     return base
 
 
@@ -42,6 +50,8 @@ def get_strains(names):
             strain_functions.append(quadratic_strain)
         elif n == 'linear':
             strain_functions.append(linear_strain)
+        elif n == 'constant':
+            strain_functions.append(constant_strain)
         else:
             print(f'{n} is not a defined strain base.')
     return strain_functions

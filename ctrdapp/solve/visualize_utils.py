@@ -23,7 +23,8 @@ def parse_json(object_type, init_objects_file):
         elif o.get('shape') == 'Cylinder':
             this_obj = pv.Cylinder(radius=o.get('radius'),
                                    height=o.get('length'),
-                                   center=o.get('transform'))
+                                   center=o.get('transform'),
+                                   direction=o.get('direction'))
         elif o.get('shape') == 'Box':
             x_half = o.get('x_length') / 2
             y_half = o.get('y_length') / 2
@@ -42,7 +43,7 @@ def parse_json(object_type, init_objects_file):
 
 def visualize_curve(curve, objects_file, tube_num, tube_rad, visualize_from_indices=None):
     plotter = pv.Plotter()
-    plotter.open_movie("this_movie.mp4")  # todo
+    plotter.open_movie("this_movie.mp4", framerate=3)  # todo
 
     add_objects(plotter, objects_file)
 
@@ -119,3 +120,20 @@ def add_objects(plotter, objects_file):
     # plot insertion plane
     plane = pv.Plane(direction=[1, 0, 0], i_size=30, j_size=30)
     plotter.add_mesh(plane, color='tan', opacity=0.4)
+
+
+def visualize_tree(from_points, to_points, node_list):
+    plotter = pv.Plotter()
+    # todo add labels/color based on node indices
+
+    plotter.add_axes_at_origin(xlabel='Tube 1', ylabel='Tube 2', zlabel='Tube 3')
+    plotter.add_mesh(pv.Sphere(radius=0.25, center=from_points[0]))
+
+    for ind, points in enumerate(zip(from_points, to_points)):
+        p_from = points[0]
+        p_to = points[1]
+        plotter.add_mesh(pv.Sphere(radius=0.25, center=p_to))
+
+        plotter.add_mesh(pv.Line(p_from, p_to))
+
+    plotter.show()

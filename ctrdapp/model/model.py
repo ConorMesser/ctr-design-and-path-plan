@@ -10,13 +10,22 @@ class Model:
     def __init__(self, tube_num, q, q_dof, max_tube_length,
                  num_discrete_points, strain_base, strain_bias, model_type):
         self.tube_num = tube_num
-        self.q = q
         self.q_dof = q_dof
         self.max_tube_length = max_tube_length
         self.num_discrete_points = num_discrete_points
         self.strain_base = strain_base
         self.strain_bias = strain_bias
         self.q_dot_bool = model_type == 'static'
+
+        if len(q) == tube_num * q_dof:  # q given as single list
+            q_list = []
+            for i in range(tube_num):
+                q_list.append(q[i*q_dof:(i + 1)*q_dof])
+            self.q = np.asarray(q_list)
+        elif len(q) == tube_num:  # q given as nested-list
+            self.q = np.asarray(q)
+        else:
+            raise ValueError(f"Given q of {q} is not the correct size.")
 
         self.delta_x = self.max_tube_length / (self.num_discrete_points - 1)
 

@@ -275,7 +275,7 @@ class Node:
         self.g_curves = g_curves
         self.insert_indices = insert_indices
         self.children = []
-        """list of int: positions of children, set as children are inserted"""
+        """list of int: positions of children in nodes list, set as children are inserted"""
 
     def get_cost(self):
         return self.heuristic.get_cost()

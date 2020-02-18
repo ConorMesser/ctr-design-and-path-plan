@@ -4,7 +4,7 @@ import pathlib
 import numpy as np
 
 from ctrdapp.collision.collision_checker import CollisionChecker
-from ctrdapp.collision.init_collision import parse_mesh
+from ctrdapp.collision.init_collision import parse_mesh, add_obstacles
 
 
 class TestCollision(unittest.TestCase):
@@ -58,7 +58,6 @@ class TestCollision(unittest.TestCase):
         self.assertEqual(self.box_checker.check_collision(self.curve1, [1]), (3, 4))
 
 
-
 def se3_generator(point):
     se3 = np.eye(4)
     se3[0:3, 3] = point
@@ -71,6 +70,23 @@ class TestInitCollision(unittest.TestCase):
         path = pathlib.Path().absolute()
         file = path.parent / "configuration" / "in_simple.STL"
         verts, tris = parse_mesh(str(file))
+
+    def test_cylinder_placement(self):
+        path = pathlib.Path().absolute()
+        file = path.parent / "test" / "configuration" / "init_cylinder_test.json"
+        obstacles = add_obstacles(file)
+
+        for i in range(3):
+            for j in [-1, 1]:
+                request = fcl.CollisionRequest()
+                result = fcl.CollisionResult()
+                arr = np.array([0, 0, 0])
+                arr[i] = 5 * j
+                sph = fcl.CollisionObject(fcl.Sphere(1), fcl.Transform(arr))
+
+                # obstacles are aligned with x (0), y (1), and z (2) axes
+                ret = fcl.collide(obstacles[i], sph, request, result)
+                self.assertTrue(ret > 0)
 
 
 if __name__ == '__main__':
