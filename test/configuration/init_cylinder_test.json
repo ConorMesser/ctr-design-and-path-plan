@@ -17,10 +17,44 @@
       "mesh": false,
       "filename": null,
       "shape": "Cylinder",
-      "radius": 3,
-      "length": 20,
+      "radius": 1,
+      "length": 10,
       "transform": [
-        40,
+        0,
+        0,
+        0
+      ],
+      "direction": [
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "mesh": false,
+      "filename": null,
+      "shape": "Cylinder",
+      "radius": 1,
+      "length": 10,
+      "transform": [
+        0,
+        0,
+        0
+      ],
+      "direction": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "mesh": false,
+      "filename": null,
+      "shape": "Cylinder",
+      "radius": 1,
+      "length": 10,
+      "transform": [
+        0,
         0,
         0
       ],
@@ -28,17 +62,6 @@
         0,
         0,
         1
-      ]
-    },
-    {
-      "mesh": false,
-      "filename": null,
-      "shape": "Sphere",
-      "radius": 5,
-      "transform": [
-        0,
-        0,
-        0
       ]
     }
     ]

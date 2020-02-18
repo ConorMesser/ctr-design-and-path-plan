@@ -1,31 +1,34 @@
-# config_integration.yaml file
+# config.yaml file
 
 optimizer_type: "nelder_mead"
 solver_type: "rrt"
 model_type: "kinematic"
 heuristic_type: "square_obstacle_avg_plus_weighted_goal"
-optimizer_precision: 0.1
 tube_number: 2
 tube_radius:
 - 1.5
 - 1.2
-collision_objects_filename: "init_objects_integration.json"
+collision_objects_filename: "init_objects_trial.json"
+
+# for nelder mead
+optimize_iterations: 150
+optimizer_precision: 0.5
 
 # for rrt solver
 step_bound: 2
 insertion_max: 60
 nearest_neighbor_function: 2
-iteration_number: 3000
+iteration_number: 2500
 single_tube_control: True
 
 # for rrt_star solver (in addition to rrt)
-  # rewire_probability: 0.1
+rewire_probability: 0.1
 
 # for kinematic model
 q_dof: 2
-num_discrete_points: 121
-  # insertion_max: 50 - should match solver
-strain_bases: "linear, helix"  # specify anything? should get this from main, but what about for testing?
+num_discrete_points: 241
+  # insertion_max: 120 - should match solver
+strain_bases: "linear, helix"  # - number should match number of tubes ** can be set by main **
 
 # for obstacle weighted goal heuristic
 goal_weight: 3

@@ -4,9 +4,9 @@
     "mesh": false,
     "filename": null,
     "shape": "Sphere",
-    "radius": 10,
+    "radius": 3,
     "transform": [
-      70,
+      80,
       10,
       -15
     ]
@@ -17,10 +17,21 @@
       "mesh": false,
       "filename": null,
       "shape": "Sphere",
-      "radius": 10,
+      "radius": 6,
       "transform": [
         50,
         0,
+        0
+      ]
+    },
+    {
+      "mesh": false,
+      "filename": null,
+      "shape": "Sphere",
+      "radius": 8,
+      "transform": [
+        73,
+        5,
         0
       ]
     },
@@ -39,7 +50,7 @@
       "mesh": false,
       "filename": null,
       "shape": "Sphere",
-      "radius": 10,
+      "radius": 5,
       "transform": [
         35,
         -5,
@@ -50,11 +61,11 @@
       "mesh": false,
       "filename": null,
       "shape": "Sphere",
-      "radius": 10,
+      "radius": 6,
       "transform": [
         30,
-        -20,
-        -20
+        0,
+        -25
       ]
     },
     {
@@ -66,6 +77,34 @@
         60,
         8,
         -27
+      ]
+    },
+    {
+      "mesh": false,
+      "filename": null,
+      "shape": "Sphere",
+      "radius": 3,
+      "transform": [
+        55,
+        16,
+        -10
+      ]
+    },
+    {
+      "mesh": false,
+      "filename": null,
+      "shape": "Cylinder",
+      "radius": 1,
+      "length": 50,
+      "transform": [
+        40,
+        0,
+        -10
+      ],
+      "direction": [
+        0,
+        1,
+        0
       ]
     }
     ]

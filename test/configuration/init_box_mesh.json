@@ -17,7 +17,7 @@
   "obstacles": [
     {
       "mesh": true,
-      "filename": "10x10_mm_box.STL",
+      "filename": "mm_simple.STL",
       "shape": null,
       "transform": [
         0,
