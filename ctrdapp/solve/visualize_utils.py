@@ -76,7 +76,7 @@ def visualize_curve_single(curve, objects_file, tube_num, tube_rad, visualize_fr
 
 
 # todo remove visualize_from_indices
-def add_single_curve(plotter, curve, tube_num, tube_rad, visualize_from_indices, invert_insert=False):
+def add_single_curve(plotter, curve, tube_num, tube_rad, visualize_from_indices, color='w', invert_insert=False):
     if not visualize_from_indices:
         visualize_from_indices = [0] * tube_num  # plot each whole tube
 
@@ -100,7 +100,7 @@ def add_single_curve(plotter, curve, tube_num, tube_rad, visualize_from_indices,
             this_tube_spline = pv.Spline(np.array(these_p), len(these_p) * 20)
             this_tube_spline["scalars"] = np.arange(this_tube_spline.n_points)
             this_tube_visual = this_tube_spline.tube(radius=this_radius)
-            this_tube_actor.append(plotter.add_mesh(this_tube_visual, color='w'))
+            this_tube_actor.append(plotter.add_mesh(this_tube_visual, color=color))
 
     return this_tube_actor
     # as movie or picture todo

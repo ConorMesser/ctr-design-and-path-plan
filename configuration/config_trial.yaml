@@ -11,7 +11,7 @@ tube_radius:
 collision_objects_filename: "init_objects_trial.json"
 
 # for nelder mead
-optimize_iterations: 150
+optimize_iterations: 60
 optimizer_precision: 0.5
 
 # for rrt solver

@@ -41,6 +41,17 @@
       "shape": "Sphere",
       "radius": 7,
       "transform": [
+        70,
+        18,
+        -7
+      ]
+    },
+    {
+      "mesh": false,
+      "filename": null,
+      "shape": "Sphere",
+      "radius": 7,
+      "transform": [
         40,
         20,
         -25
@@ -72,22 +83,22 @@
       "mesh": false,
       "filename": null,
       "shape": "Sphere",
-      "radius": 3,
+      "radius": 5,
       "transform": [
         60,
         8,
-        -27
+        -24
       ]
     },
     {
       "mesh": false,
       "filename": null,
       "shape": "Sphere",
-      "radius": 3,
+      "radius": 5,
       "transform": [
         55,
         16,
-        -10
+        -14
       ]
     },
     {

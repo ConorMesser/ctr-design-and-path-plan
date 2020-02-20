@@ -27,18 +27,18 @@ def main():
     optimizer = create_optimizer(heuristic_factory, collision_detector,
                                  np.asarray(initial_guess), configuration)
 
-    best_solver = optimizer.find_min()
+    best_solver, solvers = optimizer.find_min()
 
     # possibly rerun solver with a higher number of iterations
     # (especially for rrt* or other optimizing ones) todo
 
-    solution_cost, solution_index = best_solver.get_best_cost()
-    solution_path = best_solver.get_path(solution_index)
+    solution_cost, solution_index = best_solver.get('solver').get_best_cost()
+    solution_path = best_solver.get('solver').get_path(solution_index)
     # save path, best q, and cost todo
 
     # interactive?? todo
-    best_solver.visualize_best_solution(objects_file)  # save picture todo
-    best_solver.visualize_best_solution_path(objects_file)  # save movie todo
+    best_solver.get('solver').visualize_best_solution(objects_file)  # save picture todo
+    best_solver.get('solver').visualize_best_solution_path(objects_file)  # save movie todo
 
 
 if __name__ == "__main__":

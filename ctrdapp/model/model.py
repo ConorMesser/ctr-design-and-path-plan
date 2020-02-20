@@ -17,7 +17,7 @@ class Model:
         self.strain_bias = strain_bias
         self.q_dot_bool = model_type == 'static'
 
-        if len(q) == tube_num * q_dof:  # q given as single list
+        if len(q) == tube_num * q_dof and not isinstance(q[0], list):  # q given as single list
             q_list = []
             for i in range(tube_num):
                 q_list.append(q[i*q_dof:(i + 1)*q_dof])

@@ -32,7 +32,7 @@ class VisualizeUtilsTest(unittest.TestCase):
         file = path / "configuration" / "config_integration.yaml"
         configuration, dictionaries = parse_config(file)
         objects_file = path / "configuration" / configuration.get("collision_objects_filename")
-        this_model = create_model(config=configuration, q=[[0.01, 0.0005], [0.02, 0.0007]])
+        this_model = create_model(config=configuration, q=[[-0.01391], [0.02875]])
 
         # heuristic factory
         heuristic_factory = create_heuristic_factory(configuration,
@@ -48,7 +48,7 @@ class VisualizeUtilsTest(unittest.TestCase):
 
         this_solver.visualize_best_solution(objects_file)
 
-        #this_solver.visualize_best_solution_path(objects_file)
+        this_solver.visualize_best_solution_path(objects_file)
 
 
     def test_visualize_solve_once(self):
