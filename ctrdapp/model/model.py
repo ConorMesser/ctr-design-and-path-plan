@@ -1,5 +1,6 @@
 import numpy as np
 from math import ceil, floor, copysign
+import pathlib
 
 from .matrix_utils import big_adjoint, hat, exponential_map, t_exponential
 from .strain_bases import get_strains
@@ -258,6 +259,20 @@ def truncate_g(this_g, insert_indices):
         g_out.append(tube[insert_indices[n]:])
 
     return g_out
+
+
+def save_g_positions(this_g, filename):
+    path = pathlib.Path().absolute()
+    file = path / "outputs" / filename
+
+    f = open(file, "w")
+
+    for i, tube in enumerate(this_g):
+        f.write(f"Tube number: {i}\n\n")
+        for g in tube:
+            f.write(f"{g[0, 3]}, {g[1, 3]}, {g[2, 3]}\n")
+
+    f.close()
 
 
 def create_model(config, q):

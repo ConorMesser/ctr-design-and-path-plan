@@ -102,3 +102,12 @@ dmypy.json
 # convenience testing
 test/test_integration.py
 test/configuration/config_integration.yaml
+
+# output files
+outputs
+
+# configuration files other than the default/example files
+configuration/*.yaml
+!configuration/config.yaml
+configuration/*.json
+!configuration/init_objects.json
