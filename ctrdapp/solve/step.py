@@ -1,6 +1,5 @@
 from numpy.linalg import norm
 from numpy import array, count_nonzero
-from random import random
 from math import floor
 
 

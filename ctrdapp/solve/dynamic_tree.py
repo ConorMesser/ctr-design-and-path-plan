@@ -1,5 +1,4 @@
 from scipy import spatial
-from collections import deque
 
 
 class DynamicTree:
