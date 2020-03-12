@@ -1,6 +1,5 @@
 import pathlib
 import unittest
-import math
 import pyvista as pv
 
 from ctrdapp.config.parse_config import parse_config
@@ -76,3 +75,7 @@ class VisualizeUtilsTest(unittest.TestCase):
         add_objects(plotter, objects_file)
         plotter.show()
         # try large step size + visualize
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -13,11 +13,11 @@ def main():
     objects_file = path / "configuration" / configuration.get("collision_objects_filename")
 
     # create model
-    q = [0.03, 0.0007]  # max q for radius 0.9 tube is 0.0555
+    q = [0.03, 0.0006]  # max q for radius 0.9 tube is 0.0555
     this_model = create_model(configuration, q)
 
     this_g = this_model.solve_g(indices=[0])
-    save_g_positions(this_g, "single_helix_tube.txt")
+    save_g_positions(this_g, "single_helix_tube_smaller.txt")
 
     visualize_curve_single(this_g, objects_file, configuration.get("tube_number"), configuration.get("tube_radius"))
 

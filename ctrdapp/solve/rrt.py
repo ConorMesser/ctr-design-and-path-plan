@@ -125,7 +125,14 @@ class RRT(Solver):
 
         # collision check
         g_previous = self.tree.nodes[neighbor_index].g_curves
-        this_g, this_eta, insert_indices, true_insertion = self.model.solve_iterate(delta_rotation, delta_insert, insert_neighbor, g_previous)
+
+        # ------ input could change with space iteration
+        #   insert_self instead of insert_neighbor
+        #   rotation_self instead of g_previous
+        # ----- output
+        #   this_g would already be truncated
+        this_g, this_eta, insert_indices, true_insertion = self.model.solve_iterate(
+            delta_rotation, delta_insert, insert_neighbor, g_previous)
         this_g_truncated = truncate_g(this_g, insert_indices)
         obs_min, goal_dist = self.cd.check_collision(this_g_truncated, self.tube_rad)
         if obs_min < 0:
