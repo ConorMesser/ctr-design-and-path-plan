@@ -30,9 +30,9 @@ class Model:
 
         self.delta_x = self.max_tube_length / (self.num_discrete_points - 1)
 
-    def solve_iterate(self, delta_theta, delta_insertion,
-                      previous_insertion, g_previous,
-                      invert_insert=True):
+    def solve_integrate(self, delta_theta, delta_insertion,
+                        previous_insertion, g_previous,
+                        invert_insert=True):
 
         this_g_previous = g_previous
         this_previous_insertion = previous_insertion
@@ -188,6 +188,141 @@ class Model:
             true_insertions = [ind * self.delta_x for ind in insert_indices]
 
         return g_out, eta_out, insert_indices, true_insertions
+
+    def solve_integrate(self, delta_theta, delta_insertion,
+                        this_theta, this_insertion, invert_insert=True):
+        """Calculate the g and eta for one step in space.
+
+        Calculates the g_prime based on the theta and insertion arrays
+        and reconstructs this g based on the g_prime. The eta is calculated
+        using the theta and insertion deltas as well as the calculated q_dot.
+
+        Parameters
+        ----------
+        delta_theta : list-like of float
+            change in theta values for each tube
+        delta_insertion : list-like of float
+            change in insertion values for each tube
+        this_theta : list-like of float
+            rotation values for each tube
+        this_insertion : list-like of float
+            insertion values for each tube
+        invert_insert : bool
+            True if insertion values are given intuitively (with s(0) = 0 and
+            s(L) = L; false otherwise (default is True))
+
+        Returns
+        -------
+        list : updated SE3 g values for each tube from s to L
+            g_out[tube_num][index] = [4x4 SE3 array]
+        list : eta value for each tube
+            eta_out[tube_num][0] = eta -> (eta stored in list for consistency)
+        list : true insertion values (rounded based on discretization)
+            true_insertions[tube_num] = float
+        """
+        g_out = []
+        ksi_out = []
+        eta_out = []
+        insert_indices = []
+
+        # kinematic model is defined as s(0)=L no insertion and s=0 for full insertion
+        if invert_insert:
+            this_insertion = [ins - self.max_tube_length for ins in this_insertion]
+            delta_insertion = [-delta_ins for delta_ins in delta_insertion]
+
+        g_previous = np.eye(4)
+        eta_previous_tube = np.zeros(6)  # w.r.t tip of previous tube
+        x_axis_unit = np.array([1, 0, 0, 0, 0, 0])
+
+        for n in range(self.tube_num):
+            # todo what is the velocity? Do we want to stop an insertion that already inserted too far?
+            # is the delta_insertion from the previous point to this point? If it is illegitimate
+            # what happens? You take the negative insertion velocity from this_insertion?
+            velocity = -delta_insertion[n]
+
+            # velocity should be rounded as multiple of delta_x
+            if this_insertion[n] < 0:  # greater than full insertion
+                insert_index = 0
+                velocity = velocity + this_insertion[n]   # vel = vel + delta_insertion under 0 todo
+            elif this_insertion[n] < self.max_tube_length:
+                insert_index = int(round(this_insertion[n] / self.delta_x))
+            else:  # retraction past tip of previous tube
+                insert_index = self.num_discrete_points - 1
+                velocity = velocity + this_insertion[n] - self.max_tube_length # todo
+
+            # round the new index value away from zero (small insertions move at least one index)
+            delta_index = velocity / self.delta_x
+            if delta_index > 0:
+                new_insert_index = insert_index - ceil(delta_index)
+            else:
+                new_insert_index = insert_index - floor(delta_index)
+            insert_indices.append(new_insert_index)
+            velocity = (insert_index - new_insert_index) * self.delta_x  # todo ?????*****
+
+            # *******
+            omega_x = delta_theta[n]
+            # ****** todo used?
+
+            this_g = []
+            this_ksi_c = []
+            this_eta_r = []
+            # for q with (n rows and dof columns)
+            ksi_o = self.strain_base[insert_index] @ self.q[n, :] + self.strain_bias
+
+            theta_hat = hat(this_theta[n] * x_axis_unit)
+            g_theta = exponential_map(this_theta[n], theta_hat)
+            g_initial = g_previous @ g_theta
+
+            eta_tr1 = big_adjoint(g_theta) * omega_x @ x_axis_unit
+            eta_tr2 = big_adjoint(g_theta) * velocity @ ksi_o
+
+            q_dot_h_now = self.q_dot[n, :]
+            jacobian_r_init = np.zeros(6, self.q_dof)
+            eta_cr_o = jacobian_r_init @ q_dot_h_now
+
+            eta_r_here = eta_previous_tube + eta_tr1 + eta_tr2 + eta_cr_o
+
+            this_g.append(g_initial)
+            this_ksi_c.append(ksi_o)
+            this_eta_r.append(eta_r_here)
+
+            lin_x = range(0, self.num_discrete_points)
+            g_previous = g_initial
+            jacobian_r_previous = jacobian_r_init
+            for i in range(insert_index + 1, self.num_discrete_points):
+                this_base = self.strain_base[i]
+                this_base1 = np.zeros([6, self.q_dof])
+
+                for d in range(6):
+                    for q in range(self.q_dof):
+                        this_base1[d, q] = np.interp(i - 0.5, lin_x, [b[d, q] for b in self.strain_base])  # check todo
+
+                ksi_here = this_base @ self.q[n, :] + self.strain_bias
+                ksi_here1 = this_base1 @ self.q[n, :] + self.strain_bias
+                ksi_hat_here1 = hat(ksi_here1)
+                norm_k_here1 = np.linalg.norm(ksi_here1[0:3])
+
+                gn_here = exponential_map(self.delta_x * norm_k_here1,
+                                                   self.delta_x * ksi_hat_here1)
+                g_here = g_previous @ gn_here
+
+                jacobian_r_here = jacobian_r_previous + big_adjoint(g_previous) @ t_exponential(self.delta_x,
+                                                                                                             norm_k_here1,
+                                                                                                             ksi_here1) @ this_base1
+                eta_cr_here = jacobian_r_here @ q_dot_h_now
+                eta_r_here = eta_previous_tube + eta_tr1 + eta_tr2 + eta_cr_here
+
+                # duplicate code!!!!*****
+                this_g.append(g_here)
+                this_ksi_c.append(ksi_here)
+                this_eta_r.append(eta_r_here)
+
+                g_previous = g_here
+                jacobian_r_previous = jacobian_r_here
+            eta_previous_tube = big_adjoint(np.linalg.inv(g_previous)) @ eta_r_here
+            g_out.append(this_g)
+            eta_out.append(this_eta_r)
+            ksi_out.append(this_ksi_c)
 
     def solve_g(self, indices=None, thetas=None):
         """Calculates the g of each point for each tube at given index and theta

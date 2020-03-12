@@ -67,7 +67,7 @@ class VisualizeUtilsTest(unittest.TestCase):
         delta_theta_s = [0.2, 0.5, 0.4]
         delta_ins_s = [6, 5, 30]
         prev_ins = [10, 10, 10]
-        g_out, eta_out, indices, true_insertion = this_model.solve_iterate(delta_theta_s, delta_ins_s, prev_ins, prev_g, invert_insert=False)
+        g_out, eta_out, indices, true_insertion = this_model.solve_integrate(delta_theta_s, delta_ins_s, prev_ins, prev_g, invert_insert=False)
 
         plotter = pv.Plotter()
         g_trunc = truncate_g(g_out, indices)

@@ -131,7 +131,7 @@ class RRT(Solver):
         #   rotation_self instead of g_previous
         # ----- output
         #   this_g would already be truncated
-        this_g, this_eta, insert_indices, true_insertion = self.model.solve_iterate(
+        this_g, this_eta, insert_indices, true_insertion = self.model.solve_integrate(
             delta_rotation, delta_insert, insert_neighbor, g_previous)
         this_g_truncated = truncate_g(this_g, insert_indices)
         obs_min, goal_dist = self.cd.check_collision(this_g_truncated, self.tube_rad)
