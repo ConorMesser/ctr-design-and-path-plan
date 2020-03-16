@@ -3,7 +3,7 @@ import unittest
 import pyvista as pv
 
 from ctrdapp.config.parse_config import parse_config
-from ctrdapp.model.model import create_model, truncate_g
+from ctrdapp.model.model import create_model
 from ctrdapp.solve.visualize_utils import visualize_curve_single, add_single_curve, add_objects
 from ctrdapp.heuristic.heuristic_factory import create_heuristic_factory
 from ctrdapp.collision.collision_checker import CollisionChecker
@@ -70,7 +70,7 @@ class VisualizeUtilsTest(unittest.TestCase):
         g_out, eta_out, indices, true_insertion = this_model.solve_integrate(delta_theta_s, delta_ins_s, prev_ins, prev_g, invert_insert=False)
 
         plotter = pv.Plotter()
-        g_trunc = truncate_g(g_out, indices)
+        # g_trunc = truncate_g(g_out, indices)
         add_single_curve(plotter, g_trunc, 3, configuration.get("tube_radius"), None)
         add_objects(plotter, objects_file)
         plotter.show()

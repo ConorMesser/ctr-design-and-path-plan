@@ -209,7 +209,7 @@ class TestKinematic(unittest.TestCase):
     # Check g and eta_out
     # - Should be very simple, giving simple g_previous
     # Testing for q_dot much harder
-    def test_solve_once(self):
+    def test_solve_once(self):  # todo
         a = np.eye(4)
         a[0, 3] = -1
         b = np.eye(4)
@@ -222,49 +222,49 @@ class TestKinematic(unittest.TestCase):
         g_3_no_strain = [[a, b, c]]
 
         # zero insertion
-        g_test, eta_test, insert_indices, true_insertions = self.no_strain1_rough.solve_once(
-            [0], [0], [0], g_3_no_strain, invert_insert=True)
+        g_test, eta_test, insert_indices, true_insertions = self.no_strain1_rough.solve_integrate(
+            [0], [0], [0], [0], invert_insert=True)
         np.testing.assert_equal(g_test, g_3_no_strain)
         np.testing.assert_equal(true_insertions, [0])
         np.testing.assert_equal(insert_indices, [2])
 
         # Round away from zero tests
         insert_half = [[b, c, d]]
-        g_test_forward, eta_test, insert_indices, true_insertions = self.no_strain1_rough.solve_once(
-            [0], [0.499], [0], g_3_no_strain, invert_insert=True)
+        g_test_forward, eta_test, insert_indices, true_insertions = self.no_strain1_rough.solve_integrate(
+            [0], [0.499], [0], [0.499], invert_insert=True)
         np.testing.assert_equal(g_test_forward, insert_half)
         np.testing.assert_equal(true_insertions, [0.5])
         np.testing.assert_equal(insert_indices, [1])
 
-        g_test_backward, eta_test, insert_indices, true_insertions = self.no_strain1_rough.solve_once(
-            [0], [-0.499], [1], g_3_no_strain, invert_insert=False)
+        g_test_backward, eta_test, insert_indices, true_insertions = self.no_strain1_rough.solve_integrate(
+            [0], [-0.499], [0], [0.501], invert_insert=False)
         np.testing.assert_equal(g_test_backward, insert_half)
         np.testing.assert_equal(true_insertions, [0.5])
         np.testing.assert_equal(insert_indices, [1])
 
         insert_full = [[c, d, e]]
-        g_test_forward, eta_test, insert_indices, true_insertions = self.no_strain1_rough.solve_once(
-            [0], [0.501], [0], g_3_no_strain, invert_insert=True)
+        g_test_forward, eta_test, insert_indices, true_insertions = self.no_strain1_rough.solve_integrate(
+            [0], [0.501], [0], [0.501], invert_insert=True)
         np.testing.assert_equal(g_test_forward, insert_full)
         np.testing.assert_equal(true_insertions, [1])
         np.testing.assert_equal(insert_indices, [0])
 
-        g_test_backward, eta_test, insert_indices, true_insertions = self.no_strain1_rough.solve_once(
-            [0], [-0.501], [1], g_3_no_strain, invert_insert=False)
+        g_test_backward, eta_test, insert_indices, true_insertions = self.no_strain1_rough.solve_integrate(
+            [0], [-0.501], [1], [0.499], invert_insert=False)
         np.testing.assert_equal(g_test_backward, insert_full)
         np.testing.assert_equal(true_insertions, [0])
         np.testing.assert_equal(insert_indices, [0])
 
         # Don't allow retraction past previous tube
-        g_test, eta_test, insert_indices, true_insertions = self.no_strain1_rough.solve_once(
-            [0], [-0.1], [-0.001], g_3_no_strain, invert_insert=True)
+        g_test, eta_test, insert_indices, true_insertions = self.no_strain1_rough.solve_integrate(
+            [0], [-0.1], [0], [-0.101], invert_insert=True)
         np.testing.assert_equal(g_test, g_3_no_strain)
         np.testing.assert_equal(true_insertions, [0])
         np.testing.assert_equal(insert_indices, [2])
 
         # Don't allow extension past max tube length
-        g_test_forward, eta_test, insert_indices, true_insertions = self.no_strain1_rough.solve_once(
-            [0], [0.1], [1.001], insert_full, invert_insert=True)
+        g_test_forward, eta_test, insert_indices, true_insertions = self.no_strain1_rough.solve_integrate(
+            [0], [0.1], [0], [1.101], invert_insert=True)
         np.testing.assert_equal(g_test_forward, insert_full)
         np.testing.assert_equal(true_insertions, [1])
         np.testing.assert_equal(insert_indices, [0])

@@ -7,7 +7,6 @@ from .dynamic_tree import DynamicTree
 from .step import step, get_single_tube_value
 from ..heuristic.heuristic_factory import HeuristicFactory
 from .visualize_utils import visualize_curve, visualize_curve_single, visualize_tree
-from ..model.model import truncate_g
 
 
 class RRT(Solver):
@@ -59,7 +58,7 @@ class RRT(Solver):
         init_heuristic = self.heuristic_factory.create(obstacle_min_dist, goal_dist)
         dummy_heuristic = self.heuristic_factory.create(obstacle_min_dist, goal_dist)
         init_heuristic.calculate_cost_from_parent(dummy_heuristic)
-        init_g_curves = self.model.solve_g()
+        init_g_curves = self.model.solve_g()   # todo not needed - only stores inserted tube parts
 
         self.tree = DynamicTree(self.tube_num, [0] * self.tube_num,
                                 [0] * self.tube_num, init_heuristic, init_g_curves)
@@ -124,17 +123,9 @@ class RRT(Solver):
             new_rotation.append(this_rot % (pi * 2))  # keeps rotations as [0, 2*pi)
 
         # collision check
-        g_previous = self.tree.nodes[neighbor_index].g_curves
-
-        # ------ input could change with space iteration
-        #   insert_self instead of insert_neighbor
-        #   rotation_self instead of g_previous
-        # ----- output
-        #   this_g would already be truncated
         this_g, this_eta, insert_indices, true_insertion = self.model.solve_integrate(
-            delta_rotation, delta_insert, insert_neighbor, g_previous)
-        this_g_truncated = truncate_g(this_g, insert_indices)
-        obs_min, goal_dist = self.cd.check_collision(this_g_truncated, self.tube_rad)
+            delta_rotation, delta_insert, new_rotation, new_insert)
+        obs_min, goal_dist = self.cd.check_collision(this_g, self.tube_rad)
         if obs_min < 0:
             pass
         else:
@@ -176,16 +167,15 @@ class RRT(Solver):
 
     def visualize_from_index(self, index, objects_file):
         g_out, insert, rotate, insert_indices = self.get_path(index)
-        # get insert_indices from either insert or from model?
-        g_out_truncated = truncate_g(g_out[0], insert_indices[0])
-        visualize_curve_single(g_out_truncated, objects_file, self.tube_num, self.tube_rad)
+        g_out_flat = g_out[0]
+        visualize_curve_single(g_out_flat, objects_file, self.tube_num, self.tube_rad)
 
     def visualize_from_index_path(self, index, objects_file):
         g_out, insert, rotate, insert_indices = self.get_path(index)
-        g_out_truncated = []
-        for g, ind in zip(reversed(g_out), reversed(insert_indices)):
-            g_out_truncated.append(truncate_g(g, ind))
-        visualize_curve(g_out_truncated, objects_file, self.tube_num, self.tube_rad)
+        g_out_flat_list = []
+        for curve in reversed(g_out):
+            g_out_flat_list.append(curve)
+        visualize_curve(g_out_flat_list, objects_file, self.tube_num, self.tube_rad)
 
     def visualize_full_search(self):  # todo how to make more useful?
         # check how many dim (greater than 3 unsupported? todo)

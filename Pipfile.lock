@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "447babf18f61e34768082c7feeb45b9625e358e5d0e51cf0cbabea95159934ca"
+            "sha256": "668662af4039db49a8b149eae77b47ab503188e368dd6114fec6f716f472f3a5"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -67,12 +67,30 @@
             ],
             "version": "==2.8.0"
         },
+        "imageio-ffmpeg": {
+            "hashes": [
+                "sha256:0ca618d19d9d7d8ed59f238d801a31a34d5cdf4dce2f00a6138f329e11cf4a04",
+                "sha256:506ad83cabd7ad7059f017c8d05335975722dd0fd44c6c29155b09b9b7420319",
+                "sha256:a672c28d047094ace90125b6e6d0936bc79e6233a4bd7f15c0df9fbc57590372",
+                "sha256:b820e6b1f09c1c3c0acb6570f57a2c515c8ad353acca6853d738e67f47695662",
+                "sha256:ff165f5081d34ef6bdcf6bef943a20b82291bafae68761ca8feaeefb799b80e7"
+            ],
+            "index": "pypi",
+            "version": "==0.4.1"
+        },
+        "importlib-metadata": {
+            "hashes": [
+                "sha256:06f5b3a99029c7134207dd882428a66992a9de2bef7c2b699b5641f9886c3302",
+                "sha256:b97607a1a18a5100839aec1dc26a1ea17ee0d93b20b0f008d80a5a050afb200b"
+            ],
+            "version": "==1.5.0"
+        },
         "meshio": {
             "hashes": [
-                "sha256:35270fd59facbf4372e91f91111f66077ed813b1ebb123256b77675f1ce45faf",
-                "sha256:65da08d27a09024d335710c2941163c3b46644ffe2aeebebbe3c38040d9fc568"
+                "sha256:5b8b7c58b20929486c497645d9f9aa3e116ac56120336035e81b25a2d21d7359",
+                "sha256:cc49022fad2e6f05cf78de1f890c7df3c03f34be814ec44c71faea24337cf12b"
             ],
-            "version": "==4.0.8"
+            "version": "==4.0.9"
         },
         "numpy": {
             "hashes": [
@@ -239,6 +257,13 @@
                 "sha256:ee17372ded18987480e3e07405f9b36fc4e2a0c1da1503628c4980a3957d7c98"
             ],
             "version": "==8.1.2"
+        },
+        "zipp": {
+            "hashes": [
+                "sha256:aa36550ff0c0b7ef7fa639055d797116ee891440eac1a56f378e2d3179e0320b",
+                "sha256:c599e4d75c98f6798c509911d08a22e6c021d074469042177c8c86fb92eefd96"
+            ],
+            "version": "==3.1.0"
         }
     },
     "develop": {}

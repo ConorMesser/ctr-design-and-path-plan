@@ -15,7 +15,7 @@ collision_objects_filename: "init_objects_trial.json"
 step_bound: 2
 insertion_max: 60
 nearest_neighbor_function: 2
-iteration_number: 10000
+iteration_number: 500
 single_tube_control: True
 
 # for rrt_star solver (in addition to rrt)
