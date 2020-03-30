@@ -119,15 +119,13 @@ class CollisionChecker:
                 unit_vec = vec / length
 
                 cyl = fcl.Cylinder(rad[n], length)
-                # cylinder initialized with length along z-axis
-                init_vec = [0, 0, 1.0]
 
                 if unit_vec[2] == -1.0:  # if vector is in -z direction
                     unit_quat = [0, 1, 0, 0]  # gives 180 degree rotation
                 else:
-                    cross = np.cross(init_vec, unit_vec)
-                    w = 1 + np.dot(init_vec, unit_vec)
-                    quat = [w, cross[0], cross[1], cross[2]]
+                    # quat = [1 + dot(init_vec, unit_vec), cross(init_vec, unit_vec)]
+                    #    where init_vec is the z-axis unit vector [0, 0, 1]
+                    quat = [1 + unit_vec[2], -unit_vec[1], unit_vec[0], 0]
                     quat_mag = norm(quat)
                     unit_quat = [q / quat_mag for q in quat]
 

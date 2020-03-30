@@ -137,7 +137,7 @@ class Model:
                                           self.delta_x * hat(ksi_here_center))
                 g_here = g_previous @ gn_here
 
-                if self.q_dot_bool:
+                if self.q_dot_bool:  # todo what about when tube is inside other tube?
                     jacobian_r_here = jacobian_r_previous + big_adjoint(g_previous) @ t_exponential(self.delta_x, norm_k_here_center, ksi_here_center) @ this_centered_base
                     eta_cr_here = jacobian_r_here @ this_q_dot
                     jacobian_r_previous = jacobian_r_here

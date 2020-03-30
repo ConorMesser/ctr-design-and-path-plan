@@ -38,7 +38,9 @@ def little_adjoint(screw_in):
 
 def tilde(vector):
     """Makes the 3-vector into a 3x3 skew-symmetric matrix"""
-    skew = np.zeros([3, 3])
+    skew = np.asarray([[0, 0, 0],
+                       [0, 0, 0],
+                       [0, 0, 0]])
     skew[0, 1] = -vector[2]
     skew[0, 2] = vector[1]
     skew[1, 0] = vector[2]
@@ -50,7 +52,10 @@ def tilde(vector):
 
 def hat(screw):
     """Converts the screw into an se3 matrix"""
-    se3 = np.zeros([4, 4])
+    se3 = np.asarray([[0, 0, 0, 0],
+                      [0, 0, 0, 0],
+                      [0, 0, 0, 0],
+                      [0, 0, 0, 0]])
     se3[0:3, 0:3] = tilde(screw[0:3])
     se3[0:3, 3] = screw[3:6]
     return se3
@@ -60,10 +65,14 @@ def exponential_map(theta, gamma_hat):
     """Transforms from se(3) to SE(3) by angle theta
 
     """
+    eye_4 = [[1, 0, 0, 0],
+             [0, 1, 0, 0],
+             [0, 0, 1, 0],
+             [0, 0, 0, 1]]
     if theta == 0:
-        return np.eye(4) + gamma_hat
+        return eye_4 + gamma_hat
     else:
-        return np.eye(4) + gamma_hat + \
+        return eye_4 + gamma_hat + \
                ((1-cos(theta)) / theta**2) * matrix_power(gamma_hat, 2) + \
                ((theta-sin(theta)) / theta**3) * matrix_power(gamma_hat, 3)
 
