@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/../CTRDaPP/.idea/CTRDaPP.iml" filepath="$PROJECT_DIR$/../CTRDaPP/.idea/CTRDaPP.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/ctr-design-and-path-plan.iml" filepath="$PROJECT_DIR$/.idea/ctr-design-and-path-plan.iml" />
     </modules>
   </component>
 </project>
