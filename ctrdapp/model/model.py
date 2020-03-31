@@ -64,6 +64,7 @@ class Model:
         g_out = []
         ksi_out = []
         eta_out = []
+        ftl_out = []
         insert_indices = []
 
         # kinematic model is defined as s(0)=L no insertion and s=0 for full insertion
@@ -121,6 +122,7 @@ class Model:
             this_g = [g_initial]
             this_ksi_c = [ksi_here]
             this_eta_r = [eta_r_here]
+            this_ftl_heuristic = []  # initial todo
 
             g_previous = g_initial
 
@@ -144,14 +146,20 @@ class Model:
                     eta_r_here = eta_previous_tube + eta_tr1 + eta_tr2 + eta_cr_here
                     this_eta_r.append(eta_r_here)
 
+                g_prime = velocity * big_adjoint(np.linalg.inv(g_previous) @ g_here) @ ksi_here  # update for multi-tube (velocity, adjoint) todo
+
+                ftl_here = eta_r_here - g_prime
+
                 this_g.append(g_here)
                 this_ksi_c.append(ksi_here)
+                this_ftl_heuristic.append(ftl_here)
 
                 g_previous = g_here
             eta_previous_tube = big_adjoint(np.linalg.inv(g_previous)) @ eta_r_here
             g_out.append(this_g)
             eta_out.append(this_eta_r)
             ksi_out.append(this_ksi_c)
+            ftl_out.append(this_ftl_heuristic)
 
         if invert_insert:
             true_insertions = [self.max_tube_length - (ind * self.delta_x) for ind in insert_indices]
