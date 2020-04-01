@@ -123,7 +123,7 @@ class RRT(Solver):
             new_rotation.append(this_rot % (pi * 2))  # keeps rotations as [0, 2*pi)
 
         # collision check
-        this_g, this_eta, insert_indices, true_insertion = self.model.solve_integrate(
+        this_g, this_eta, insert_indices, true_insertion, ftl_heuristic = self.model.solve_integrate(
             delta_rotation, delta_insert, new_rotation, new_insert)
         obs_min, goal_dist = self.cd.check_collision(this_g, self.tube_rad)
         if obs_min < 0:

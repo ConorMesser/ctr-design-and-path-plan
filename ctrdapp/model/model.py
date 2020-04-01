@@ -67,6 +67,8 @@ class Model:
         ftl_out = []
         insert_indices = []
 
+        velocity_sum = 0
+
         # kinematic model is defined as s(0)=L no insertion and s=0 for full insertion
         if invert_insert:
             this_insertion = [self.max_tube_length - ins for ins in this_insertion]
@@ -95,6 +97,8 @@ class Model:
             else:  # retraction past tip of previous tube
                 insert_index = self.num_discrete_points - 1
                 velocity = velocity + this_insertion[n] - self.max_tube_length  # todo
+
+            velocity_sum = velocity_sum + velocity
 
             insert_indices.append(insert_index)
 
@@ -146,7 +150,8 @@ class Model:
                     eta_r_here = eta_previous_tube + eta_tr1 + eta_tr2 + eta_cr_here
                     this_eta_r.append(eta_r_here)
 
-                g_prime = velocity * big_adjoint(np.linalg.inv(g_previous) @ g_here) @ ksi_here  # update for multi-tube (velocity, adjoint) todo
+                # update for multi-tube (velocity, adjoint) todo
+                g_prime = velocity_sum * big_adjoint(np.linalg.inv(g_previous) @ g_here) @ ksi_here
 
                 ftl_here = eta_r_here - g_prime
 
@@ -166,7 +171,7 @@ class Model:
         else:
             true_insertions = [ind * self.delta_x for ind in insert_indices]
 
-        return g_out, eta_out, insert_indices, true_insertions
+        return g_out, eta_out, insert_indices, true_insertions, ftl_out
 
     def solve_g(self, indices=None, thetas=None):
         """Calculates the g of each point for each tube at given index and theta
