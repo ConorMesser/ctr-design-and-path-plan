@@ -13,7 +13,8 @@ def parse_config(file):
                             "insertion_max", "single_tube_control"]}
     models = {"kinematic": ["q_dof", "num_discrete_points", "insertion_max"]}
     heuristics = {"square_obstacle_avg_plus_weighted_goal": ["goal_weight"],
-                  "only_goal_distance": []}
+                  "only_goal_distance": [],
+                  "follow_the_leader": ["only_tip"]}
 
     dictionaries = {"optimizer": optimizers, "solver": solvers,
                     "model": models, "heuristic": heuristics}
@@ -35,7 +36,8 @@ def parse_config(file):
                 "q_dof": 3,
                 "num_discrete_points": 101,
                 "single_tube_control": True,
-                "optimize_iterations": 50
+                "optimize_iterations": 50,
+                "only_tip": True
                 }
 
     with file.open(mode='r') as fid:

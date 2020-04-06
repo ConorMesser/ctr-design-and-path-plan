@@ -16,7 +16,7 @@ class Model:
         self.num_discrete_points = num_discrete_points
         self.strain_base = strain_base
         self.strain_bias = strain_bias
-        self.q_dot_bool = model_type == 'static'
+        self.q_dot_bool = model_type == 'Static'
 
         if len(q) == tube_num * q_dof and not isinstance(q[0], list):  # q given as single list
             q_list = []
@@ -110,8 +110,8 @@ class Model:
             g_theta = exponential_map(this_theta[n], theta_hat)
             g_initial = g_previous @ g_theta
 
-            eta_tr1 = big_adjoint(g_theta) * delta_theta[n] @ x_axis_unit
-            eta_tr2 = big_adjoint(g_theta) * velocity @ ksi_here
+            eta_tr1 = big_adjoint(g_initial) * delta_theta[n] @ x_axis_unit  # should this be g_initial or g_theta?? todo
+            eta_tr2 = big_adjoint(g_initial) * velocity @ ksi_here
 
             if self.q_dot_bool:
                 this_q_dot = None  # todo calculate q_dot - should be array with size q_dof
@@ -151,7 +151,7 @@ class Model:
                     this_eta_r.append(eta_r_here)
 
                 # update for multi-tube (velocity, adjoint) todo
-                g_prime = velocity_sum * big_adjoint(np.linalg.inv(g_previous) @ g_here) @ ksi_here
+                g_prime = velocity_sum * big_adjoint(g_here) @ ksi_here
 
                 ftl_here = eta_r_here - g_prime
 

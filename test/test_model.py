@@ -4,7 +4,7 @@ import math
 
 from ctrdapp.model import matrix_utils
 from ctrdapp.model.model import Model
-from ctrdapp.model.strain_bases import linear_strain
+from ctrdapp.model.strain_bases import linear_strain, constant_strain
 
 
 class TestMatrixUtils(unittest.TestCase):
@@ -230,27 +230,27 @@ class TestKinematic(unittest.TestCase):
 
         # Round away from zero tests
         insert_half = [[b, c, d]]
-        g_test_forward, eta_test, insert_indices, true_insertions, ftl_heuristic = self.no_strain1_rough.solve_integrate(
-            [0], [0.499], [0], [0.499], invert_insert=True)
+        g_test_forward, eta_test, insert_indices, true_insertions, ftl_heuristic = \
+            self.no_strain1_rough.solve_integrate([0], [0.499], [0], [0.499], invert_insert=True)
         np.testing.assert_equal(g_test_forward, insert_half)
         np.testing.assert_equal(true_insertions, [0.5])
         np.testing.assert_equal(insert_indices, [1])
 
-        g_test_backward, eta_test, insert_indices, true_insertions, ftl_heuristic = self.no_strain1_rough.solve_integrate(
-            [0], [-0.499], [0], [0.501], invert_insert=False)
+        g_test_backward, eta_test, insert_indices, true_insertions, ftl_heuristic = \
+            self.no_strain1_rough.solve_integrate([0], [-0.499], [0], [0.501], invert_insert=False)
         np.testing.assert_equal(g_test_backward, insert_half)
         np.testing.assert_equal(true_insertions, [0.5])
         np.testing.assert_equal(insert_indices, [1])
 
         insert_full = [[c, d, e]]
-        g_test_forward, eta_test, insert_indices, true_insertions, ftl_heuristic = self.no_strain1_rough.solve_integrate(
-            [0], [0.501], [0], [0.501], invert_insert=True)
+        g_test_forward, eta_test, insert_indices, true_insertions, ftl_heuristic = \
+            self.no_strain1_rough.solve_integrate([0], [0.501], [0], [0.501], invert_insert=True)
         np.testing.assert_equal(g_test_forward, insert_full)
         np.testing.assert_equal(true_insertions, [1])
         np.testing.assert_equal(insert_indices, [0])
 
-        g_test_backward, eta_test, insert_indices, true_insertions, ftl_heuristic = self.no_strain1_rough.solve_integrate(
-            [0], [-0.501], [1], [0.499], invert_insert=False)
+        g_test_backward, eta_test, insert_indices, true_insertions, ftl_heuristic = \
+            self.no_strain1_rough.solve_integrate([0], [-0.501], [1], [0.499], invert_insert=False)
         np.testing.assert_equal(g_test_backward, insert_full)
         np.testing.assert_equal(true_insertions, [0])
         np.testing.assert_equal(insert_indices, [0])
@@ -263,8 +263,8 @@ class TestKinematic(unittest.TestCase):
         np.testing.assert_equal(insert_indices, [2])
 
         # Don't allow extension past max tube length
-        g_test_forward, eta_test, insert_indices, true_insertions, ftl_heuristic = self.no_strain1_rough.solve_integrate(
-            [0], [0.1], [0], [1.101], invert_insert=True)
+        g_test_forward, eta_test, insert_indices, true_insertions, ftl_heuristic = \
+            self.no_strain1_rough.solve_integrate([0], [0.1], [0], [1.101], invert_insert=True)
         np.testing.assert_equal(g_test_forward, insert_full)
         np.testing.assert_equal(true_insertions, [1])
         np.testing.assert_equal(insert_indices, [0])
@@ -277,13 +277,34 @@ class TestKinematic(unittest.TestCase):
         b = np.eye(4)
         b[0, 3] = -0.5
         c = np.eye(4)
-        g_3_no_strain = [[a, b, c]]
 
         # zero insertion
         for _ in range(5000):
-            g_test_backward, eta_test, insert_indices, true_insertions = self.no_strain1_rough.solve_once(
-                [0], [-0.501], [1], g_3_no_strain, invert_insert=False)
+            g_test_backward, eta_test, insert_indices, true_insertions, ftl_heuristic = self.no_strain1_rough.solve_integrate(
+                [0], [-0.501], [1], [0.499], invert_insert=False)
 
     def test_solve_g_speed(self):
         for _ in range(5000):
             turn_g = self.constant_strain2.solve_g(indices=[0, 0], thetas=[0, math.pi/2])
+
+    def test_FTL_constant_curvature(self):
+        strain_bias = np.array([0, 0, 0, 1, 0, 0])
+        strain_base = [constant_strain]
+
+        model = Model(1, np.array([0.05]), 1, 50, 101, strain_base, strain_bias, 'Kinematic')
+
+        g_out, eta_out, insert_indices, true_insertions, ftl_out = model.solve_integrate([0], [2], [0], [40])
+        for i in [0, len(ftl_out[-1]) - 1]:
+            for j in [0, 5]:
+                self.assertAlmostEqual(ftl_out[-1][i][j], 0)
+
+    def test_FTL_linear_curvature(self):  # todo
+        strain_bias = np.array([0, 0, 0, 1, 0, 0])
+        strain_base = [linear_strain, linear_strain]
+
+        model = Model(2, np.array([[0.05, 0.005, 0.007], [0.05, 0.002, 0.005]]), 3, 50, 101, strain_base, strain_bias, 'Kinematic')
+
+        g_out, eta_out, insert_indices, true_insertions, ftl_out = model.solve_integrate([0.5, 0.25], [1, 1], [0.25, 0], [40, 30])
+        for i in [0, len(ftl_out[-1]) - 1]:
+            for j in [0, 5]:
+                self.assertNotEqual(ftl_out[-1][i][j], 0)
