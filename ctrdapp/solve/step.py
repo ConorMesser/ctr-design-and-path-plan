@@ -73,30 +73,33 @@ def get_single_tube_value(insert_rand, insert_neighbor, neighbor_parent, probabi
     int : the tube number with a delta insertion
     """
     tube_num = len(insert_neighbor)
-    neighbor_diff = array([n - p for n, p in zip(insert_neighbor, neighbor_parent)])
-    if count_nonzero(neighbor_diff) > 1:
-        raise ValueError("Multiple tubes inserted in neighbor node.")
-    elif count_nonzero(neighbor_diff) == 0:
-        last_insertion_tube_num = 0  # default to first tube (esp. for initial insertion)
+    if tube_num == 1:
+        return insert_rand, 0
     else:
-        last_insertion_tube_num = neighbor_diff.nonzero()[0][0]
-    possible_tubes = list(range(tube_num))
-    possible_tubes.pop(last_insertion_tube_num)
-
-    shifted_r = random_num - probability
-    if shifted_r < 0:
-        this_insertion_tube_num = last_insertion_tube_num
-    else:
-        probability_other = (1 - probability) / (tube_num - 1)
-        this_insertion_tube_num = possible_tubes[floor(shifted_r/probability_other)]
-
-    new_insert = []
-    for i in range(tube_num):
-        if i == this_insertion_tube_num:
-            new_insert.append(insert_rand[i])
+        neighbor_diff = array([n - p for n, p in zip(insert_neighbor, neighbor_parent)])
+        if count_nonzero(neighbor_diff) > 1:
+            raise ValueError("Multiple tubes inserted in neighbor node.")
+        elif count_nonzero(neighbor_diff) == 0:
+            last_insertion_tube_num = 0  # default to first tube (esp. for initial insertion)
         else:
-            new_insert.append(insert_neighbor[i])
-    return new_insert, this_insertion_tube_num
+            last_insertion_tube_num = neighbor_diff.nonzero()[0][0]
+        possible_tubes = list(range(tube_num))
+        possible_tubes.pop(last_insertion_tube_num)
+
+        shifted_r = random_num - probability
+        if shifted_r < 0:
+            this_insertion_tube_num = last_insertion_tube_num
+        else:
+            probability_other = (1 - probability) / (tube_num - 1)
+            this_insertion_tube_num = possible_tubes[floor(shifted_r/probability_other)]
+
+        new_insert = []
+        for i in range(tube_num):
+            if i == this_insertion_tube_num:
+                new_insert.append(insert_rand[i])
+            else:
+                new_insert.append(insert_neighbor[i])
+        return new_insert, this_insertion_tube_num
 
 
 

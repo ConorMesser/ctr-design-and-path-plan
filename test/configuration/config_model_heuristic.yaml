@@ -3,12 +3,11 @@
 optimizer_type: "nelder_mead"
 solver_type: "rrt"
 model_type: "kinematic"
-heuristic_type: "follow_the_leader_w_insertion"
+heuristic_type: "follow_the_leader"
 optimizer_precision: 0.1
-tube_number: 2
+tube_number: 1
 tube_radius:
 - 1.5
-- 1.2
 collision_objects_filename: "init_objects_blank.json"
 
 # for rrt solver
@@ -22,10 +21,14 @@ single_tube_control: True
   # rewire_probability: 0.1
 
 # for kinematic model
-q_dof: 2
+q_dof: 1
 num_discrete_points: 121
   # insertion_max: 50 - should match solver
-strain_bases: "linear, helix"  # specify anything? should get this from main, but what about for testing?
+strain_bases: "constant"  # specify anything? should get this from main, but what about for testing?
 
 # for obstacle weighted goal heuristic
 goal_weight: 3
+
+# for follow the leader heuristic
+only_tip: False
+insertion_weight: 10  # with insertion consideration

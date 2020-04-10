@@ -58,8 +58,12 @@ class Model:
             g_out[tube_num][index] = [4x4 SE3 array]
         list : eta value for each tube
             eta_out[tube_num][0] = eta -> (eta stored in list for consistency)
+        list : insertion indices for each tube
+            insert_indices[tube_num] = int
         list : true insertion values (rounded based on discretization)
             true_insertions[tube_num] = float
+        list : follow-the-leader array (g_dot minux g_prime) for each tube from s to L
+            ftl_out[tube_num] = [6x1 array]
         """
         g_out = []
         ksi_out = []
@@ -106,11 +110,13 @@ class Model:
             # q as list of n arrays of size dof
             ksi_here = self.strain_base[n](self.delta_x * insert_index, self.q_dof) @ self.q[n] + self.strain_bias
 
+            #  todo ksi_here should be based on previous insert/theta???
+
             theta_hat = hat(this_theta[n] * x_axis_unit)
             g_theta = exponential_map(this_theta[n], theta_hat)
             g_initial = g_previous @ g_theta
 
-            eta_tr1 = big_adjoint(g_initial) * delta_theta[n] @ x_axis_unit  # should this be g_initial or g_theta?? todo
+            eta_tr1 = big_adjoint(g_initial) * delta_theta[n] @ x_axis_unit  # should this be g_init or g_theta?? todo
             eta_tr2 = big_adjoint(g_initial) * velocity @ ksi_here
 
             if self.q_dot_bool:
@@ -160,7 +166,7 @@ class Model:
                 this_ftl_heuristic.append(ftl_here)
 
                 g_previous = g_here
-            eta_previous_tube = big_adjoint(np.linalg.inv(g_previous)) @ eta_r_here
+            eta_previous_tube = eta_r_here  # big_adjoint(np.linalg.inv(g_previous)) @ eta_r_here
             g_out.append(this_g)
             eta_out.append(this_eta_r)
             ksi_out.append(this_ksi_c)

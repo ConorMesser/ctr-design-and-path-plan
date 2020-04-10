@@ -1,6 +1,7 @@
 import pathlib
 import unittest
 import pyvista as pv
+from math import pi
 
 from ctrdapp.config.parse_config import parse_config
 from ctrdapp.model.model import create_model
@@ -8,6 +9,7 @@ from ctrdapp.solve.visualize_utils import visualize_curve_single, add_single_cur
 from ctrdapp.heuristic.heuristic_factory import create_heuristic_factory
 from ctrdapp.collision.collision_checker import CollisionChecker
 from ctrdapp.solve.solver_factory import create_solver
+from ctrdapp.heuristic.follow_the_leader import FollowTheLeader
 
 
 class VisualizeUtilsTest(unittest.TestCase):
@@ -31,7 +33,7 @@ class VisualizeUtilsTest(unittest.TestCase):
         file = path / "configuration" / "config_integration.yaml"
         configuration, dictionaries = parse_config(file)
         objects_file = path / "configuration" / configuration.get("collision_objects_filename")
-        this_model = create_model(config=configuration, q=[[-0.01391], [0.02875]])
+        this_model = create_model(config=configuration, q=[[0.01, 0.0008], [0.02, 0.0005]])
 
         # heuristic factory
         heuristic_factory = create_heuristic_factory(configuration,
@@ -75,6 +77,42 @@ class VisualizeUtilsTest(unittest.TestCase):
         add_objects(plotter, objects_file)
         plotter.show()
         # try large step size + visualize
+
+
+# ----------- KEEP ------------
+class TestModelAndHeuristics(unittest.TestCase):
+
+    def setUp(self) -> None:
+        path = pathlib.Path().absolute()
+        file = path / "configuration" / "config_model_heuristic.yaml"
+        self.configuration, dictionaries = parse_config(file)
+        self.objects_file = path / "configuration" / "init_objects_blank.json"
+
+        # single constant-curvature tube
+        self.model_constant = create_model(config=self.configuration, q=[0.05])
+        self.configuration['tube_number'] = 3
+        self.configuration['tube_radius'] = [1.5, 1.2, 0.9]
+        self.configuration['strain_bases'] = "constant, constant, constant"
+        self.model_constant2 = create_model(config=self.configuration, q=[[pi/60], [0], [pi/60]])
+
+    def testConstantModelFTL(self):
+        for i in range(-5, 11, 4):  # regardless of the size of insertion
+            for theta in range(-2, 2):  # regardless of the theta value
+                _, _, _, _, ftl_out = self.model_constant.solve_integrate([0], [i], [theta], [30])
+                ftl_heuristic = FollowTheLeader(False, ftl_out)
+                self.assertAlmostEqual(ftl_heuristic.get_cost(), 0, 14)
+
+        _, _, _, _, ftl_out = self.model_constant.solve_integrate([0.85], [2], [0], [30])
+        ftl_heuristic = FollowTheLeader(False, ftl_out)
+        self.assertEqual(ftl_heuristic.get_cost(), 0.85)  # equal to the value of omega
+
+    def testConstantModel2TubesFTL(self):
+        g_out, _, _, _, ftl_out = self.model_constant2.solve_integrate([0, 0, 0], [2, 0, 0], [0, 0, 0], [2, 10, 30])
+
+        visualize_curve_single(g_out, self.objects_file, self.configuration.get("tube_number"), self.configuration.get("tube_radius"))
+
+        ftl_heuristic = FollowTheLeader(True, ftl_out)
+        self.assertEqual(ftl_heuristic.get_cost(), pi/3)
 
 
 if __name__ == '__main__':

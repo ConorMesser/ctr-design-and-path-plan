@@ -15,8 +15,6 @@ def main():
     objects_file = path / "configuration" / configuration.get("collision_objects_filename")
     collision_detector = CollisionChecker(objects_file)
 
-    # create model factory  todo is this necessary?
-
     # create heuristic factory
     heuristic_factory = create_heuristic_factory(configuration,
                                                  dictionaries.get("heuristic"))

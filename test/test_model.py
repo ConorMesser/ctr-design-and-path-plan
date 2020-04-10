@@ -294,9 +294,25 @@ class TestKinematic(unittest.TestCase):
         model = Model(1, np.array([0.05]), 1, 50, 101, strain_base, strain_bias, 'Kinematic')
 
         g_out, eta_out, insert_indices, true_insertions, ftl_out = model.solve_integrate([0], [2], [0], [40])
-        for i in [0, len(ftl_out[-1]) - 1]:
-            for j in [0, 5]:
-                self.assertAlmostEqual(ftl_out[-1][i][j], 0)
+        ftl_averages = [np.mean(array) for tube in ftl_out for array in tube]
+
+        tube_length = len(ftl_out[-1])
+        for i in [0, tube_length - 1]:
+            self.assertAlmostEqual(ftl_averages[i], 0)
+
+    def test_FTL_constant_curvature_two_tubes(self):
+        strain_bias = np.array([0, 0, 0, 1, 0, 0])
+        strain_base = [constant_strain, constant_strain]
+
+        model = Model(2, np.array([0.05, 0.03]), 1, 50, 101, strain_base, strain_bias, 'Kinematic')
+
+        g_out, eta_out, insert_indices, true_insertions, ftl_out = model.solve_integrate([0, 0], [2, 1], [0, 0], [40, 40])
+        ftl_averages = [np.mean(array) for tube in ftl_out for array in tube]
+
+        tube_length = len(ftl_out[-1])
+        for i in [0, tube_length - 1]:
+            self.assertAlmostEqual(ftl_averages[i], 0)
+            self.assertNotEqual(ftl_averages[i + tube_length], 0)
 
     def test_FTL_linear_curvature(self):  # todo
         strain_bias = np.array([0, 0, 0, 1, 0, 0])

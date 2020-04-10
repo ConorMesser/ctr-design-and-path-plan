@@ -1,18 +1,18 @@
 from abc import ABC, abstractmethod
 from .square_obstacle_avg_plus_weighted_goal import SquareObstacleAvgPlusWeightedGoal
 from .only_goal_distance import OnlyGoalDistance
-from .follow_the_leader import FollowTheLeader
+from .follow_the_leader import FollowTheLeader, FollowTheLeaderWInsertion
 from .heuristic import Heuristic
 
 
 class HeuristicFactory(ABC):
 
     @abstractmethod
-    def factory_method(self, *args):
+    def factory_method(self, **kwargs):
         pass
 
     def create(self, **kwargs) -> Heuristic:
-        return self.factory_method(kwargs)
+        return self.factory_method(**kwargs)
 
 
 class SOAPWGFactory(HeuristicFactory):
@@ -40,9 +40,22 @@ class FTLFactory(HeuristicFactory):
     def __init__(self, only_tip, *args):
         self.only_tip = only_tip
 
-    def factory_method(self, **kwargs):
+    def factory_method(self, **kwargs) -> FollowTheLeader:
         # only uses follow_the_leader input
         return FollowTheLeader(self.only_tip, kwargs.get('follow_the_leader'))
+
+
+class FTLWInsertionFactory(FTLFactory):
+
+    def __init__(self, only_tip, insertion_weight, *args):
+        super().__init__(only_tip, *args)
+        self.insertion_weight = insertion_weight
+
+    def factory_method(self, **kwargs) -> FollowTheLeaderWInsertion:
+        # only uses follow_the_leader input
+        return FollowTheLeaderWInsertion(self.only_tip, self.insertion_weight,
+                                         kwargs.get('follow_the_leader'),
+                                         kwargs.get('insertion_fraction'))
 
 
 def create_heuristic_factory(configuration: dict, heuristic_dict: dict) -> HeuristicFactory:
@@ -54,6 +67,10 @@ def create_heuristic_factory(configuration: dict, heuristic_dict: dict) -> Heuri
         return SOAPWGFactory(*params)
     elif name == "only_goal_distance":
         return OnlyGoalDistanceFactory(*params)
+    elif name == "follow_the_leader":
+        return FTLFactory(*params)
+    elif name == "follow_the_leader_w_insertion":
+        return FTLWInsertionFactory(*params)
     else:
         raise UserWarning(f"{name} is not a defined heuristic. "
                           f"Change config file.")

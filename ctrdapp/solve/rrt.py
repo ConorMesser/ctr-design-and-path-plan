@@ -55,12 +55,17 @@ class RRT(Solver):
         init_tube[1][0, 3] = 0.0001
         init_tubes = [init_tube] * self.tube_num
         obstacle_min_dist, goal_dist = self.cd.check_collision(init_tubes, self.tube_rad)
+        ftl = []
+        for i in range(self.tube_num):
+            ftl.append([np.asarray([0, 0, 0, 0, 0, 0])])
         init_heuristic = self.heuristic_factory.create(min_obstacle_distance=obstacle_min_dist,
                                                        goal_distance=goal_dist,
-                                                       follow_the_leader=follow_the_leader)
+                                                       follow_the_leader=ftl,
+                                                       insertion_fraction=self.tube_num)
         dummy_heuristic = self.heuristic_factory.create(min_obstacle_distance=obstacle_min_dist,
                                                         goal_distance=goal_dist,
-                                                        follow_the_leader=follow_the_leader)
+                                                        follow_the_leader=ftl,
+                                                        insertion_fraction=self.tube_num)
         init_heuristic.calculate_cost_from_parent(dummy_heuristic)
         init_g_curves = self.model.solve_g()   # todo not needed - only stores inserted tube parts
 
@@ -138,9 +143,12 @@ class RRT(Solver):
                 self.tree.solution.append(new_index)
                 self.found_solution = True
                 goal_dist = 0
+            insert_fractions = [1 - (float(i) / self.insert_max) for i in true_insertion]  # inverse insertion
+            insert_frac = sum(insert_fractions)  # = 0 if all tubes are fully inserted; = tube_num if fully retracted
             new_heuristic = self.heuristic_factory.create(min_obstacle_distance=obs_min,
                                                           goal_distance=goal_dist,
-                                                          follow_the_leader=ftl_heuristic)
+                                                          follow_the_leader=ftl_heuristic,
+                                                          insertion_fraction=insert_frac)
             self.tree.insert(true_insertion, new_rotation, neighbor_index,
                              new_heuristic, this_g, insert_indices)  # todo implement lazy insert/collision check
 

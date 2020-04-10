@@ -32,3 +32,7 @@ strain_bases: "linear, linear"  #  - number should match number of tubes ** can 
 
 # for obstacle weighted goal heuristic
 goal_weight: 3
+
+# for follow the leader heuristic
+only_tip: True
+insertion_weight: 10  # with insertion consideration
