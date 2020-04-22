@@ -1,9 +1,10 @@
 import unittest
 import numpy as np
 import math
+import timeit
 
 from ctrdapp.model import matrix_utils
-from ctrdapp.model.model import Model
+from ctrdapp.model.model import Model, calculate_indices
 from ctrdapp.model.strain_bases import linear_strain, constant_strain
 
 
@@ -211,89 +212,122 @@ class TestKinematic(unittest.TestCase):
     # Testing for q_dot much harder
     def test_solve_once(self):  # todo
         a = np.eye(4)
-        a[0, 3] = -1
         b = np.eye(4)
-        b[0, 3] = -0.5
+        b[0, 3] = 0.5
         c = np.eye(4)
-        d = np.eye(4)
-        d[0, 3] = 0.5
-        e = np.eye(4)
-        e[0, 3] = 1
-        g_3_no_strain = [[a, b, c]]
+        c[0, 3] = 1
+        insert_none = [[a]]
+        insert_half = [[a, b]]
+        insert_full = [[a, b, c]]
+
+        # only one eta value because no q_dot
+        eta_none = np.array([[[0, 0, 0, 0, 0, 0]]])
+        eta_forward_half = np.array([[[0, 0, 0, 0.5, 0, 0]]])  # "forward" is insertion; velocity = -delta
+        eta_backwards_half = np.array([[[0, 0, 0, -0.5, 0, 0]]])  # "backwards" is retraction; velocity = -delta
 
         # zero insertion
-        g_test, eta_test, insert_indices, true_insertions, ftl_heuristic = self.no_strain1_rough.solve_integrate(
-            [0], [0], [0], [0], invert_insert=True)
-        np.testing.assert_equal(g_test, g_3_no_strain)
+        g_test, eta_test, insert_indices, true_insertions, ftl_heuristic = self.no_strain1_rough.solve_integrate([0],
+                                                                                                                 [0],
+                                                                                                                 [0],
+                                                                                                                 [0], insert_none,
+                                                                                                                 invert_insert=True)
+        np.testing.assert_equal(g_test, insert_none)
         np.testing.assert_equal(true_insertions, [0])
         np.testing.assert_equal(insert_indices, [2])
+        np.testing.assert_equal(eta_test, eta_none)
+        np.testing.assert_equal(ftl_heuristic, [[0]])
 
         # Round away from zero tests
-        insert_half = [[b, c, d]]
         g_test_forward, eta_test, insert_indices, true_insertions, ftl_heuristic = \
-            self.no_strain1_rough.solve_integrate([0], [0.499], [0], [0.499], invert_insert=True)
+            self.no_strain1_rough.solve_integrate([0], [0.499], [0], [0.499], insert_none, invert_insert=True)
         np.testing.assert_equal(g_test_forward, insert_half)
         np.testing.assert_equal(true_insertions, [0.5])
         np.testing.assert_equal(insert_indices, [1])
+        np.testing.assert_almost_equal(eta_test, eta_forward_half, 3)
+        np.testing.assert_equal(ftl_heuristic, [[0]])
 
         g_test_backward, eta_test, insert_indices, true_insertions, ftl_heuristic = \
-            self.no_strain1_rough.solve_integrate([0], [-0.499], [0], [0.501], invert_insert=False)
+            self.no_strain1_rough.solve_integrate([0], [-0.499], [0], [0.501], insert_none, invert_insert=False)
         np.testing.assert_equal(g_test_backward, insert_half)
         np.testing.assert_equal(true_insertions, [0.5])
         np.testing.assert_equal(insert_indices, [1])
+        np.testing.assert_almost_equal(eta_test, eta_forward_half, 3)
+        np.testing.assert_equal(ftl_heuristic, [[0]])
 
-        insert_full = [[c, d, e]]
         g_test_forward, eta_test, insert_indices, true_insertions, ftl_heuristic = \
-            self.no_strain1_rough.solve_integrate([0], [0.501], [0], [0.501], invert_insert=True)
-        np.testing.assert_equal(g_test_forward, insert_full)
-        np.testing.assert_equal(true_insertions, [1])
-        np.testing.assert_equal(insert_indices, [0])
+            self.no_strain1_rough.solve_integrate([0], [0.501], [0], [0.501], insert_none, invert_insert=True)
+        np.testing.assert_equal(g_test_forward, insert_half)
+        np.testing.assert_equal(true_insertions, [0.5])
+        np.testing.assert_equal(insert_indices, [1])
+        np.testing.assert_almost_equal(eta_test, eta_forward_half, 3)
+        np.testing.assert_equal(ftl_heuristic, [[0]])
 
         g_test_backward, eta_test, insert_indices, true_insertions, ftl_heuristic = \
-            self.no_strain1_rough.solve_integrate([0], [-0.501], [1], [0.499], invert_insert=False)
-        np.testing.assert_equal(g_test_backward, insert_full)
-        np.testing.assert_equal(true_insertions, [0])
-        np.testing.assert_equal(insert_indices, [0])
+            self.no_strain1_rough.solve_integrate([0], [-0.501], [0], [0.499], insert_none, invert_insert=False)
+        np.testing.assert_equal(g_test_backward, insert_half)
+        np.testing.assert_equal(true_insertions, [0.5])
+        np.testing.assert_equal(insert_indices, [1])
+        np.testing.assert_almost_equal(eta_test, eta_forward_half, 3)
+        np.testing.assert_equal(ftl_heuristic, [[0]])
 
         # Don't allow retraction past previous tube
-        g_test, eta_test, insert_indices, true_insertions, ftl_heuristic = self.no_strain1_rough.solve_integrate(
-            [0], [-0.1], [0], [-0.101], invert_insert=True)
-        np.testing.assert_equal(g_test, g_3_no_strain)
+        g_test, eta_test, insert_indices, true_insertions, ftl_heuristic = self.no_strain1_rough.solve_integrate([0],
+                                                                                                                 [-0.1],
+                                                                                                                 [0],
+                                                                                                                 [-0.101],
+                                                                                                                 insert_none,
+                                                                                                                 invert_insert=True)
+        np.testing.assert_equal(g_test, insert_none)
         np.testing.assert_equal(true_insertions, [0])
         np.testing.assert_equal(insert_indices, [2])
+        np.testing.assert_equal(eta_test, np.array([[[0, 0, 0, -0.1, 0, 0]]]))  # velocity remains despite input error
+        np.testing.assert_equal(ftl_heuristic, [[0]])
 
         # Don't allow extension past max tube length
+        this_g = self.no_strain1_rough.solve_g([2], [0])
         g_test_forward, eta_test, insert_indices, true_insertions, ftl_heuristic = \
-            self.no_strain1_rough.solve_integrate([0], [0.1], [0], [1.101], invert_insert=True)
+            self.no_strain1_rough.solve_integrate([0], [0.1], [0], [1.101], insert_full, invert_insert=True)
         np.testing.assert_equal(g_test_forward, insert_full)
         np.testing.assert_equal(true_insertions, [1])
         np.testing.assert_equal(insert_indices, [0])
+        np.testing.assert_equal(eta_test, np.array([[[0, 0, 0, 0.1, 0, 0]]]))
+        np.testing.assert_equal(ftl_heuristic, [[0, 0, 0]])
 
-        # test for q_dot and eta
+        # test for q_dot todo
 
     def test_solve_once_speed(self):
-        a = np.eye(4)
-        a[0, 3] = -1
-        b = np.eye(4)
-        b[0, 3] = -0.5
-        c = np.eye(4)
-
         # zero insertion
-        for _ in range(5000):
-            g_test_backward, eta_test, insert_indices, true_insertions, ftl_heuristic = self.no_strain1_rough.solve_integrate(
-                [0], [-0.501], [1], [0.499], invert_insert=False)
+        iter_num = 5000
+        this_g = self.no_strain1_rough.solve_g([2], [0])
+        time = timeit.Timer(lambda: self.no_strain1_rough.solve_integrate(
+            [0], [-0.501], [1], [0.499], this_g, invert_insert=False)).timeit(iter_num)
+        self.assertLess(time/iter_num, 0.0002)
 
     def test_solve_g_speed(self):
-        for _ in range(5000):
-            turn_g = self.constant_strain2.solve_g(indices=[0, 0], thetas=[0, math.pi/2])
+        iter_num = 500
+        time_full = timeit.Timer(lambda: self.constant_strain2.solve_g(
+            indices=[0, 0], thetas=[0, math.pi/2])).timeit(iter_num)
+        self.assertLess(time_full/iter_num, 0.005)
+
+        time_part = timeit.Timer(lambda: self.constant_strain2.solve_g(
+            indices=[0, 0], thetas=[0, math.pi / 2], full=False)).timeit(iter_num)
+        self.assertAlmostEqual(time_part/iter_num, time_full/iter_num, 3)
+
+        time_full_no_extension = timeit.Timer(lambda: self.constant_strain2.solve_g(
+            thetas=[0, math.pi/2])).timeit(iter_num)
+        time_part_no_extension = timeit.Timer(lambda: self.constant_strain2.solve_g(
+            thetas=[0, math.pi / 2], full=False)).timeit(iter_num)
+        self.assertLess(time_part_no_extension, time_full_no_extension)
+        self.assertLess(time_full, time_full_no_extension)
 
     def test_FTL_constant_curvature(self):
         strain_bias = np.array([0, 0, 0, 1, 0, 0])
         strain_base = [constant_strain]
 
         model = Model(1, np.array([0.05]), 1, 50, 101, strain_base, strain_bias, 'Kinematic')
+        prev_g_out = model.solve_g([38], [0], full=False)
 
-        g_out, eta_out, insert_indices, true_insertions, ftl_out = model.solve_integrate([0], [2], [0], [40])
+        _, ftl_out = model.solve_eta([-2], [38], [0], prev_g_out)
         ftl_averages = [np.mean(array) for tube in ftl_out for array in tube]
 
         tube_length = len(ftl_out[-1])
@@ -305,8 +339,9 @@ class TestKinematic(unittest.TestCase):
         strain_base = [constant_strain, constant_strain]
 
         model = Model(2, np.array([0.05, 0.03]), 1, 50, 101, strain_base, strain_bias, 'Kinematic')
+        prev_g_out = model.solve_g([76, 78], [0, 0], full=False)
 
-        g_out, eta_out, insert_indices, true_insertions, ftl_out = model.solve_integrate([0, 0], [2, 1], [0, 0], [40, 40])
+        _, ftl_out = model.solve_eta([-2, -1], [76, 78], [0, 0], prev_g_out)
         ftl_averages = [np.mean(array) for tube in ftl_out for array in tube]
 
         tube_length = len(ftl_out[-1])
@@ -314,13 +349,46 @@ class TestKinematic(unittest.TestCase):
             self.assertAlmostEqual(ftl_averages[i], 0)
             self.assertNotEqual(ftl_averages[i + tube_length], 0)
 
-    def test_FTL_linear_curvature(self):  # todo
-        strain_bias = np.array([0, 0, 0, 1, 0, 0])
-        strain_base = [linear_strain, linear_strain]
+    def test_Calculate_Indices_both_max(self):
+        arr_neg = [-3, -1, 0]
+        arr_max = [50, 51, 53]
+        for i in range(3):
+            for j in range(3):
+                self.calc_indices_convenience(arr_neg[i], arr_neg[j], 0, 0, 0)
+        for i in range(3):
+            for j in range(3):
+                self.calc_indices_convenience(arr_max[i], arr_max[j], 50, 50, 0)
 
-        model = Model(2, np.array([[0.05, 0.005, 0.007], [0.05, 0.002, 0.005]]), 3, 50, 101, strain_base, strain_bias, 'Kinematic')
+    def test_Calculate_Indices_less_than_one(self):
+        self.calc_indices_convenience(0, 0.49, 0, 1, 1)
+        self.calc_indices_convenience(0.49, 0, 1, 0, -1)
+        self.calc_indices_convenience(-5, 0.49, 0, 1, 1)
+        self.calc_indices_convenience(0.49, -0.02, 1, 0, -1)
+        self.calc_indices_convenience(49.51, 50, 49, 50, 1)
+        self.calc_indices_convenience(50, 49.51, 50, 49, -1)
+        self.calc_indices_convenience(49.4, 50.3, 49, 50, 1)
+        self.calc_indices_convenience(60, 49.05, 50, 49, -1)
+        self.calc_indices_convenience(10.2, 10.3, 10, 11, 1)
+        self.calc_indices_convenience(10.3, 10.2, 11, 10, -1)
 
-        g_out, eta_out, insert_indices, true_insertions, ftl_out = model.solve_integrate([0.5, 0.25], [1, 1], [0.25, 0], [40, 30])
-        for i in [0, len(ftl_out[-1]) - 1]:
-            for j in [0, 5]:
-                self.assertNotEqual(ftl_out[-1][i][j], 0)
+    def test_Calculate_Indices_round_prev_first(self):
+        self.calc_indices_convenience(19.9, 21.95, 20, 22, 2)
+        self.calc_indices_convenience(21.95, 19.9, 22, 20, -2)
+        self.calc_indices_convenience(19.49, 21.51, 19, 21, 2)
+        self.calc_indices_convenience(21.51, 19.49, 22, 20, -2)
+
+    def test_Calculate_Indices_same_val(self):
+        self.calc_indices_convenience(10, 10, 10, 10, 0)
+
+    def test_Calculate_Indices_small_delta(self):
+        self.calc_indices_convenience(10.27, 10.31, 103, 104, 1, delta_x=0.1)
+        self.calc_indices_convenience(10.31, 10.27, 103, 102, -1, delta_x=0.1)
+
+    def calc_indices_convenience(self, prev_init, next_init, prev_out, next_out, delta_out, max_tube=50, delta_x=1.):
+        prev_insert_index, new_insert_index = calculate_indices([prev_init], [next_init], max_tube, delta_x)
+        self.assertEqual(prev_insert_index, [prev_out])
+        self.assertEqual(new_insert_index, [next_out])
+
+
+if __name__ == '__main__':
+    unittest.main()

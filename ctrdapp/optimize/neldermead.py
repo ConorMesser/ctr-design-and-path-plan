@@ -51,6 +51,7 @@ class NelderMead(Optimizer):
         # model from x
         this_model = create_model(self.configuration, x)
 
+        this_model.solve_g()
         # model, heuristic_factory, collision_detector, configuration
         this_solver = create_solver(this_model, self.heuristic_factory, self.collision_checker, self.configuration)
 
