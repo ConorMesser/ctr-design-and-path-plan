@@ -6,6 +6,7 @@ from random import random
 from .dynamic_tree import DynamicTree
 from .step import step, get_single_tube_value
 from ..heuristic.heuristic_factory import HeuristicFactory
+from ..heuristic.heuristic import Heuristic
 from .visualize_utils import visualize_curve, visualize_curve_single, visualize_tree
 
 
@@ -50,24 +51,16 @@ class RRT(Solver):
         self.single_tube_control = configuration.get("single_tube_control")
         """boolean : can only one tube be controlled (inserted/rotated) per step?"""
 
-        # calculate initial obstacle/goal distances and initialize the heuristic
-        init_tube = [np.eye(4), np.eye(4)]
-        init_tube[1][0, 3] = 0.0001
-        init_tubes = [init_tube] * self.tube_num
-        obstacle_min_dist, goal_dist = self.cd.check_collision(init_tubes, self.tube_rad)
+        # initial heuristic is not used (generation is set as 0)
         ftl = []
         for i in range(self.tube_num):
-            ftl.append([np.asarray([0, 0, 0, 0, 0, 0])])
-        init_heuristic = self.heuristic_factory.create(min_obstacle_distance=obstacle_min_dist,
-                                                       goal_distance=goal_dist,
+            ftl.append([np.asarray([0, 0, 0, 100, 0, 0])])
+        init_heuristic = self.heuristic_factory.create(min_obstacle_distance=0,
+                                                       goal_distance=10e10,
                                                        follow_the_leader=ftl,
                                                        insertion_fraction=self.tube_num)
-        dummy_heuristic = self.heuristic_factory.create(min_obstacle_distance=obstacle_min_dist,
-                                                        goal_distance=goal_dist,
-                                                        follow_the_leader=ftl,
-                                                        insertion_fraction=self.tube_num)
-        init_heuristic.calculate_cost_from_parent(dummy_heuristic)
-        init_g_curves = self.model.solve_g()   # todo not needed - only stores inserted tube parts
+        init_tube = [np.eye(4)]
+        init_g_curves = [init_tube] * self.tube_num
 
         self.tree = DynamicTree(self.tube_num, [0] * self.tube_num,
                                 [0] * self.tube_num, init_heuristic, init_g_curves)
@@ -97,8 +90,7 @@ class RRT(Solver):
         there is no collision, it is added to the tree and the cost and solution
         fields are updated. Modifies the tree and found_solution.
 
-        ***currently alters the insertion and rotation values for all tubes in
-        each step. The nearest neighbor is only found by insertion values.
+        ***The nearest neighbor is only found by insertion values.
         Accordingly, the rotation values are just incremented by random values
         bounded by the rotation_max. This is a static value for now but may be
         extended to decrease as insertion length increases (so the actual change
@@ -122,6 +114,7 @@ class RRT(Solver):
 
         delta_insert = [new - old for new, old in zip(new_insert, insert_neighbor)]
 
+        g_neighbor = self.tree.nodes[neighbor_index].g_curves
         rotation_neighbor = self.tree.nodes[neighbor_index].rotation
         new_rotation = []
         delta_rotation = []
@@ -132,8 +125,11 @@ class RRT(Solver):
             new_rotation.append(this_rot % (pi * 2))  # keeps rotations as [0, 2*pi)
 
         # collision check
-        this_g, this_eta, insert_indices, true_insertion, ftl_heuristic = self.model.solve_integrate(
-            delta_rotation, delta_insert, new_rotation, new_insert)
+        this_g, this_eta, insert_indices, true_insertion, ftl_heuristic = self.model.solve_integrate(delta_rotation,
+                                                                                                     delta_insert,
+                                                                                                     new_rotation,
+                                                                                                     new_insert,
+                                                                                                     g_neighbor)
         obs_min, goal_dist = self.cd.check_collision(this_g, self.tube_rad)
         if obs_min < 0:
             pass

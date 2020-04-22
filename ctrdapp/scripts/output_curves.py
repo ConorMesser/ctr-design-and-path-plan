@@ -8,7 +8,7 @@ from ctrdapp.solve.visualize_utils import visualize_curve_single
 def main():
 
     path = pathlib.Path().absolute()
-    file = path / "configuration" / "config_output_curve.yaml"
+    file = path / "configuration" / "config.yaml"
     configuration, dictionaries = parse_config(file)
     objects_file = path / "configuration" / configuration.get("collision_objects_filename")
 

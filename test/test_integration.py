@@ -59,21 +59,23 @@ class VisualizeUtilsTest(unittest.TestCase):
         configuration, dictionaries = parse_config(file)
         objects_file = path / "configuration" / configuration.get("collision_objects_filename")
         configuration["strain_bases"] = "linear, linear, quadratic"
-        this_model = create_model(config=configuration, q=[[-0.02, 0.001], [0.03, 0.002], [0.01, 0.0001]])
+        this_model = create_model(config=configuration, q=[[-0.02, 0.001], [0.03, 0.002]])
 
         # get g previous (using solve_g)
-        insert_indices = [100, 100, 100]
+        insert_indices = [100, 100]
         prev_g = this_model.solve_g(indices=insert_indices)
 
         # try small step size + visualize
-        delta_theta_s = [0.2, 0.5, 0.4]
-        delta_ins_s = [6, 5, 30]
-        prev_ins = [10, 10, 10]
-        g_out, eta_out, indices, true_insertion, ftl_heuristic = this_model.solve_integrate(delta_theta_s, delta_ins_s, prev_ins, prev_g, invert_insert=False)
+        delta_theta_s = [0.2, 0.5]
+        delta_ins_s = [6, 5]
+        this_ins = [4, 5]
+        this_theta = [1, 1.2]
+        g_out, eta_out, indices, true_insertion, ftl_heuristic = this_model.solve_integrate(delta_theta_s, delta_ins_s,
+                                                                                            this_theta, this_ins, prev_g,
+                                                                                            invert_insert=False)
 
         plotter = pv.Plotter()
-        # g_trunc = truncate_g(g_out, indices)
-        add_single_curve(plotter, g_trunc, 3, configuration.get("tube_radius"), None)
+        add_single_curve(plotter, g_out, 2, configuration.get("tube_radius"), None)
         add_objects(plotter, objects_file)
         plotter.show()
         # try large step size + visualize
@@ -97,22 +99,34 @@ class TestModelAndHeuristics(unittest.TestCase):
 
     def testConstantModelFTL(self):
         for i in range(-5, 11, 4):  # regardless of the size of insertion
-            for theta in range(-2, 2):  # regardless of the theta value
-                _, _, _, _, ftl_out = self.model_constant.solve_integrate([0], [i], [theta], [30])
+            for j in range(-2, 2):  # regardless of the theta value
+                prev_g_out = self.model_constant.solve_g(indices=[60 + i * 2], thetas=[j], full=False)
+                _, _, _, _, ftl_out = self.model_constant.solve_integrate([0], [i], [j], [30], prev_g_out)
                 ftl_heuristic = FollowTheLeader(False, ftl_out)
                 self.assertAlmostEqual(ftl_heuristic.get_cost(), 0, 14)
 
-        _, _, _, _, ftl_out = self.model_constant.solve_integrate([0.85], [2], [0], [30])
+        prev_g_out = self.model_constant.solve_g(indices=[64], thetas=[-85], full=False)
+        _, _, _, _, ftl_out = self.model_constant.solve_integrate([0.85], [2], [0], [30], prev_g_out)
         ftl_heuristic = FollowTheLeader(False, ftl_out)
         self.assertEqual(ftl_heuristic.get_cost(), 0.85)  # equal to the value of omega
 
     def testConstantModel2TubesFTL(self):
-        g_out, _, _, _, ftl_out = self.model_constant2.solve_integrate([0, 0, 0], [2, 0, 0], [0, 0, 0], [2, 10, 30])
+        # First and Last tubes have some constant curvature. Second is straight.
+        # Initial configuration has last tube with 90 degrees of curvature.
+        # First (largest) tube moves from no insertion to 2, but due to equal curvature with
+        #  the last tube, the follow the leader heuristic for the last tube should be 0
+        #  other than in the z-velocity (= -pi/3)
+        prev_g_out = self.model_constant2.solve_g(indices=[120, 100, 60], thetas=[0, 0, 0], full=False)
+        g_out, _, _, _, ftl_out = self.model_constant2.solve_integrate([0, 0, 0], [2, 0, 0], [0, 0, 0], [2, 10, 30], prev_g_out)
 
-        visualize_curve_single(g_out, self.objects_file, self.configuration.get("tube_number"), self.configuration.get("tube_radius"))
+        # visualize_curve_single(g_out, self.objects_file,
+        #                        self.configuration.get("tube_number"), self.configuration.get("tube_radius"))
 
         ftl_heuristic = FollowTheLeader(True, ftl_out)
-        self.assertEqual(ftl_heuristic.get_cost(), pi/3)
+        for i in range(0, 5):
+            self.assertAlmostEqual(ftl_out[-1][-1][i], 0)
+        self.assertAlmostEqual(ftl_out[-1][-1][-1], -pi/3)
+        self.assertAlmostEqual(ftl_heuristic.get_cost(), pi/3)
 
 
 if __name__ == '__main__':
