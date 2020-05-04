@@ -115,7 +115,7 @@ def add_objects(plotter, objects_file):
     # plot goal mesh (should only be one)
     goal_meshes = parse_json('goal', objects_file)
     for g_m in goal_meshes:
-        plotter.add_mesh(g_m, color='b')
+        plotter.add_mesh(g_m, color='b', opacity=0.3)
 
     # plot insertion plane
     plane = pv.Plane(direction=[1, 0, 0], i_size=30, j_size=30)

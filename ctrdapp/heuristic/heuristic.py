@@ -4,7 +4,11 @@ from abc import ABC, abstractmethod
 class Heuristic(ABC):
 
     @abstractmethod
-    def calculate_cost_from_parent(self, parent: "Heuristic"):
+    def calculate_cost_from_parent(self, parent: "Heuristic", reset=False):
+        pass
+
+    @abstractmethod
+    def test_cost_from_parent(self, parent: "Heuristic"):
         pass
 
     @abstractmethod

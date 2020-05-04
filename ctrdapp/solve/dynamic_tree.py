@@ -62,11 +62,9 @@ class DynamicTree:
 
         Returns
         -------
-        list of float
+        (list of float; int; list of float) :
             array giving the insertion values of the nearest neighbor
-        int
             the index of the nearest neighbor (as stored in nodes array)
-        list of float
             array giving the insertion values of the neighbor's parent
         """
 
@@ -75,7 +73,7 @@ class DynamicTree:
         i_best = None
         for i in range(0, len(self.kdtrees)):
             if self.kdtrees[i] is not None:
-                [this_dist, this_loc] = self.kdtrees[i].query(x)
+                [this_dist, this_loc] = self.kdtrees[i].query(x, distance_upper_bound=min_dist)
                 if this_dist < min_dist:
                     min_dist = this_dist
                     loc_best = this_loc
@@ -90,6 +88,37 @@ class DynamicTree:
         else:  # first node has no parent
             parent_node = final_node
         return final_node.insertion, nodes_ind, parent_node.insertion
+
+    def find_all_nearest_neighbor(self, x, max_distance):
+        """Finds the nearest neighbors to x within given distance.
+
+        Parameters
+        ----------
+        x: list of float
+            given point
+        max_distance: float
+            maximum distance from x allowed
+
+        Returns
+        -------
+        list of int
+            the indices of the nearest neighbors (as stored in nodes array)
+        """
+        location = []
+        kd_tree_num = []
+        for i in range(0, len(self.kdtrees)):
+            if self.kdtrees[i] is not None:
+                [_, query_locations] = self.kdtrees[i].query(x, None, distance_upper_bound=max_distance)
+                for loc in query_locations:
+                    location.append(loc)
+                    kd_tree_num.append(i)
+        node_indices = []
+        for j in range(len(location)):
+            final_ind = 2 ** kd_tree_num[j] + location[j] - 1
+            node_ind = self.map2nodes[final_ind]
+            node_indices.append(node_ind)
+
+        return node_indices
 
     def insert(self, ins, rot, parent, heuristic, g_curves, insert_indices):
         """Inserts the new point into the tree with the given data and parent
@@ -140,6 +169,48 @@ class DynamicTree:
         # delete previous KDtrees
         for i in range(0, k):
             self.kdtrees[i] = None
+
+    def no_cycle(self, parent_ind, child_ind):
+        ancestor = self.nodes[parent_ind].parent
+
+        if ancestor == child_ind:
+            return False
+        elif ancestor == 0:
+            return True
+        elif ancestor is None:
+            raise ValueError('Parent_ind should never be entered as 0 (root node).')
+        else:
+            return self.no_cycle(ancestor, child_ind)
+
+    # def reset_heuristic_all_children(self, ind):
+    #     children = []
+    #     temp = []
+    #     temp.extend(self.nodes[ind].children)
+    #
+    #     while temp:  # while temp is not empty
+    #         child = temp.pop()
+    #         children.append(child)
+    #         temp.extend(self.nodes[child].children)
+    #
+    #     for ch in children:
+    #         self_node = self.nodes[ch]
+    #         parent_heuristic = self.nodes[self_node.parent].heuristic
+    #         self_node.heuristic.calculate_cost_from_parent(parent_heuristic, reset=True)
+
+    def reset_heuristic_all_children(self, ind):
+        parent_heuristic = self.nodes[ind].heuristic
+        children = self.nodes[ind].children
+        for ch in children:
+            self.nodes[ch].heuristic.calculate_cost_from_parent(parent_heuristic, reset=True)
+            self.reset_heuristic_all_children(ch)
+
+    def swap_parents(self, current_ind, new_parent_ind, current_heuristic, new_parent_heuristic):
+        previous_parent = self.nodes[current_ind].parent
+        self.nodes[previous_parent].children.remove(current_ind)
+        self.nodes[current_ind].parent = new_parent_ind
+        self.nodes[new_parent_ind].children.append(current_ind)
+        current_heuristic.calculate_cost_from_parent(new_parent_heuristic, reset=True)
+        self.reset_heuristic_all_children(current_ind)
 
     def get_costs(self, child_ind):
         """Retrieves list of costs from child to root parent

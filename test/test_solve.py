@@ -9,14 +9,16 @@ from ctrdapp.solve.dynamic_tree import Node
 from ctrdapp.solve.step import step, get_single_tube_value
 from ctrdapp.solve.visualize_utils import parse_json
 from ctrdapp.heuristic.only_goal_distance import OnlyGoalDistance
+from ctrdapp.heuristic.square_obstacle_avg_plus_weighted_goal import SquareObstacleAvgPlusWeightedGoal
 
 
 class TestDynamicTree(unittest.TestCase):
     def setUp(self) -> None:
         self.simple_heuristic = OnlyGoalDistance(10)
-        self.heuristic_one = OnlyGoalDistance(1)
-        self.heuristic_two = OnlyGoalDistance(2)
-        self.heuristic_three = OnlyGoalDistance(3)
+        heuristic_one = OnlyGoalDistance(1)
+        heuristic_two = OnlyGoalDistance(2)
+        heuristic_three = OnlyGoalDistance(3)
+
         self.simple_indices = [0, 0]
         self.other_indices = [1, 1]
         self.simple_g = [[np.eye(4)]]
@@ -30,9 +32,9 @@ class TestDynamicTree(unittest.TestCase):
         self.tree = DynamicTree(2, self.zeros, self.zeros, self.simple_heuristic, self.simple_g)
 
         self.final_tree = DynamicTree(2, self.zeros, self.zeros, self.simple_heuristic, self.simple_g)
-        self.final_tree.insert(self.ones, self.ones, 0, self.simple_heuristic, self.simple_g, self.simple_indices)
-        self.final_tree.insert(self.twos, self.twos, 1, self.simple_heuristic, self.simple_g, self.simple_indices)
-        self.final_tree.insert(self.threes, self.threes, 0, self.simple_heuristic, self.other_g, self.other_indices)
+        self.final_tree.insert(self.ones, self.ones, 0, heuristic_one, self.simple_g, self.simple_indices)
+        self.final_tree.insert(self.twos, self.twos, 1, heuristic_two, self.simple_g, self.simple_indices)
+        self.final_tree.insert(self.threes, self.threes, 0, heuristic_three, self.other_g, self.other_indices)
 
         self.tree0 = spatial.KDTree([self.zeros])
         self.tree1 = spatial.KDTree([self.zeros, self.ones])
@@ -40,11 +42,6 @@ class TestDynamicTree(unittest.TestCase):
         self.tree3 = spatial.KDTree([self.zeros, self.ones, self.twos, self.threes])
         self.tree2alone = spatial.KDTree([self.twos])
 
-    # insert tests
-    # testing state changes:
-    # prev kdtrees empty, new kdtree
-    # children set
-    # map2nodes updated
     def test_insert(self):
         self.assertEqual(len(self.tree.kdtrees), 1)
         self.assertEqual(self.tree.map2nodes[0], 0)
@@ -79,30 +76,30 @@ class TestDynamicTree(unittest.TestCase):
         self.assertEqual(self.tree.map2nodes, [None, None, None, 2, 0, 1, 3])
 
     def test_nearest_neighbor(self):
-        self.assertEqual(self.tree.nearest_neighbor([0.0, 0.0]), ([0.0, 0.0], 0))
-        self.assertEqual(self.tree.nearest_neighbor([10608.0, -6198745.0]), ([0.0, 0.0], 0))
+        self.assertEqual(self.tree.nearest_neighbor([0.0, 0.0]), ([0.0, 0.0], 0, [0.0, 0.0]))
+        self.assertEqual(self.tree.nearest_neighbor([10608.0, -6198745.0]), ([0.0, 0.0], 0, [0.0, 0.0]))
 
-        self.tree.insert(self.ones, self.ones, 0, self.simple_heuristic, self.simple_g, self.simple_indices)
-        self.tree.insert(self.twos, self.twos, 0, self.simple_heuristic, self.simple_g, self.simple_indices)
-        self.tree.insert(self.threes, self.threes, 0, self.simple_heuristic, self.simple_g, self.simple_indices)
+        self.assertEqual(self.final_tree.nearest_neighbor([0.0, 0.0]), (self.zeros, 0, self.zeros))
+        self.assertEqual(self.final_tree.nearest_neighbor([1.0, 1.0]), (self.ones, 1, self.zeros))
+        self.assertEqual(self.final_tree.nearest_neighbor([0.8, 0.7]), (self.ones, 1, self.zeros))
+        self.assertEqual(self.final_tree.nearest_neighbor([2.5, 2.49]), (self.twos, 2, self.ones))
+        self.assertEqual(self.final_tree.nearest_neighbor([2.5, 2.51]), (self.threes, 3, self.zeros))
 
-        self.assertEqual(self.tree.nearest_neighbor([0.0, 0.0]), ([0.0, 0.0], 0))
-        self.assertEqual(self.tree.nearest_neighbor([1.0, 1.0]), (self.ones, 1))
-        self.assertEqual(self.tree.nearest_neighbor([0.8, 0.7]), (self.ones, 1))
-        self.assertEqual(self.tree.nearest_neighbor([2.5, 2.49]), (self.twos, 2))
-        self.assertEqual(self.tree.nearest_neighbor([2.5, 2.51]), (self.threes, 3))
+    def test_find_all_nearest_neighbor(self):  # todo
+        self.assertEqual(self.tree.find_all_nearest_neighbor([0.0, 0.0], 10), [0])
+        self.assertEqual(self.tree.find_all_nearest_neighbor([0.0, 0.0], 0.0001), [0])
+        self.assertEqual(self.tree.find_all_nearest_neighbor([5.0, 5.0], 1), [])
+
+        self.assertEqual(self.final_tree.find_all_nearest_neighbor([2.0, 1.0], 1), [])
+        self.assertEqual(self.final_tree.find_all_nearest_neighbor([2.0, 1.0], 1.0001), [2, 1])
+        self.assertEqual(self.final_tree.find_all_nearest_neighbor([2.0, 1.0], 2.5), [2, 1, 0, 3])
+        self.assertEqual(self.final_tree.find_all_nearest_neighbor([2.0, 0.0], 2.5), [1, 2, 0])
 
     def test_get_costs(self):
-        self.assertEqual(self.tree.get_costs(0), [10])
-
-        self.tree.insert(self.ones, self.ones, 0, self.heuristic_one, self.simple_g, self.simple_indices)
-        self.tree.insert(self.twos, self.twos, 1, self.heuristic_two, self.simple_g, self.simple_indices)
-        self.tree.insert(self.threes, self.threes, 0, self.heuristic_three, self.simple_g, self.simple_indices)
-
-        self.assertEqual(self.tree.get_costs(0), [10])
-        self.assertEqual(self.tree.get_costs(1), [1, 10])
-        self.assertEqual(self.tree.get_costs(2), [2, 1, 10])
-        self.assertEqual(self.tree.get_costs(3), [3, 10])
+        self.assertEqual(self.final_tree.get_costs(0), [10])
+        self.assertEqual(self.final_tree.get_costs(1), [1, 10])
+        self.assertEqual(self.final_tree.get_costs(2), [2, 1, 10])
+        self.assertEqual(self.final_tree.get_costs(3), [3, 10])
 
     def test_get_data(self):
 
@@ -140,6 +137,84 @@ class TestDynamicTree(unittest.TestCase):
         list3 = [0, 1, 2]
         self.assertRaises(UserWarning, DynamicTree._assign, list3, 20, 5)
         self.assertEqual(list3, [0, 1, 2, 5])
+
+    def test_no_cycle(self):
+        simple_heuristic = OnlyGoalDistance(10)
+        simple_g = [[np.eye(4)]]
+        zeros = [0.0]
+        indices = [1]
+        tree = DynamicTree(1, zeros, zeros, simple_heuristic, simple_g)  # ind: 0
+        tree.insert(zeros, zeros, 0, simple_heuristic, simple_g, indices)  # ind: 1
+        tree.insert(zeros, zeros, 1, simple_heuristic, simple_g, indices)  # ind: 2
+        tree.insert(zeros, zeros, 2, simple_heuristic, simple_g, indices)  # ind: 3
+        tree.insert(zeros, zeros, 0, simple_heuristic, simple_g, indices)  # ind: 4
+        tree.insert(zeros, zeros, 4, simple_heuristic, simple_g, indices)  # ind: 5
+        tree.insert(zeros, zeros, 4, simple_heuristic, simple_g, indices)  # ind: 6
+        tree.insert(zeros, zeros, 2, simple_heuristic, simple_g, indices)  # ind: 7
+        tree.insert(zeros, zeros, 7, simple_heuristic, simple_g, indices)  # ind: 8
+
+        """
+                              0
+                            /   \
+                           1     4
+                          /     / \
+                         2     5   6
+                        / \
+                       3   7 - 8
+
+        """
+
+        self.assertTrue(tree.no_cycle(5, 3))
+        self.assertTrue(tree.no_cycle(5, 2))
+        self.assertTrue(tree.no_cycle(5, 1))
+        self.assertTrue(tree.no_cycle(5, 7))
+        self.assertTrue(tree.no_cycle(5, 6))
+        self.assertTrue(tree.no_cycle(6, 5))
+        self.assertTrue(tree.no_cycle(4, 1))
+        self.assertTrue(tree.no_cycle(8, 3))
+        self.assertTrue(tree.no_cycle(4, 6))
+        self.assertTrue(tree.no_cycle(2, 3))
+
+        self.assertFalse(tree.no_cycle(8, 1))
+        self.assertFalse(tree.no_cycle(8, 2))
+        self.assertFalse(tree.no_cycle(7, 1))
+        self.assertFalse(tree.no_cycle(3, 1))
+        self.assertFalse(tree.no_cycle(8, 7))
+
+        self.assertRaises(ValueError, tree.no_cycle, 0, 5)
+
+    # tests reset_heuristic_all_children as well
+    def test_swap_parents(self):
+        heuristic_zero = SquareObstacleAvgPlusWeightedGoal(1, 1, 0)
+        heuristic_one = SquareObstacleAvgPlusWeightedGoal(1, 1, 0)
+        heuristic_two = SquareObstacleAvgPlusWeightedGoal(1, 1, 0)
+        heuristic_three = SquareObstacleAvgPlusWeightedGoal(1, 1, 0)
+        heuristic_four = SquareObstacleAvgPlusWeightedGoal(1, 1/3, 0)
+        heuristic_five = SquareObstacleAvgPlusWeightedGoal(1, 1/2, 0)
+
+        simple_g = [[np.eye(4)]]
+        zeros = [0.0]
+        indices = [1]
+        tree = DynamicTree(1, zeros, zeros, heuristic_zero, simple_g)  # ind: 0
+        tree.insert(zeros, zeros, 0, heuristic_one, simple_g, indices)  # ind: 1
+        tree.insert(zeros, zeros, 1, heuristic_two, simple_g, indices)  # ind: 2
+        tree.insert(zeros, zeros, 2, heuristic_three, simple_g, indices)  # ind: 3
+        tree.insert(zeros, zeros, 2, heuristic_four, simple_g, indices)  # ind: 4
+        tree.insert(zeros, zeros, 0, heuristic_five, simple_g, indices)  # ind: 5
+
+        self.assertEqual(heuristic_one.get_cost(), 1)
+        self.assertEqual(heuristic_two.get_cost(), 1)
+        self.assertEqual(heuristic_three.get_cost(), 1)
+        self.assertEqual(heuristic_four.get_cost(), 11/3)
+        self.assertEqual(heuristic_five.get_cost(), 4)
+
+        tree.swap_parents(2, 5, heuristic_two, heuristic_five)
+
+        self.assertEqual(heuristic_one.get_cost(), 1)
+        self.assertEqual(heuristic_two.get_cost(), 5/2)
+        self.assertEqual(heuristic_three.get_cost(), 2)
+        self.assertEqual(heuristic_four.get_cost(), 14/3)
+        self.assertEqual(heuristic_five.get_cost(), 4)
 
 
 class TestStep(unittest.TestCase):

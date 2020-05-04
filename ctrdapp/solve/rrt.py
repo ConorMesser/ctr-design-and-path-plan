@@ -55,7 +55,7 @@ class RRT(Solver):
         ftl = []
         for i in range(self.tube_num):
             ftl.append([np.asarray([0, 0, 0, 100, 0, 0])])
-        init_heuristic = self.heuristic_factory.create(min_obstacle_distance=0,
+        init_heuristic = self.heuristic_factory.create(min_obstacle_distance=0.00001,  # todo
                                                        goal_distance=10e10,
                                                        follow_the_leader=ftl,
                                                        insertion_fraction=self.tube_num)
@@ -101,6 +101,31 @@ class RRT(Solver):
         VOID
         """
 
+        delta_rotation, delta_insert, new_rotation, new_insert, neighbor_index, g_neighbor = self.calc_new_random_config()
+        this_g, this_eta, insert_indices, true_insertion, ftl_heuristic = self.model.solve_integrate(delta_rotation,
+                                                                                                     delta_insert,
+                                                                                                     new_rotation,
+                                                                                                     new_insert,
+                                                                                                     g_neighbor)
+        obs_min, goal_dist = self.cd.check_collision(this_g, self.tube_rad)
+        if obs_min < 0:
+            pass
+        else:
+            new_index = len(self.tree.nodes)  # before insertion, so no -1
+            if goal_dist < 0:
+                self.tree.solution.append(new_index)
+                self.found_solution = True
+                goal_dist = 0
+            insert_fractions = [1 - (float(i) / self.insert_max) for i in true_insertion]  # inverse insertion
+            insert_frac = sum(insert_fractions)  # = 0 if all tubes are fully inserted; = tube_num if fully retracted
+            new_heuristic = self.heuristic_factory.create(min_obstacle_distance=obs_min,
+                                                          goal_distance=goal_dist,
+                                                          follow_the_leader=ftl_heuristic,
+                                                          insertion_fraction=insert_frac)
+            self.tree.insert(true_insertion, new_rotation, neighbor_index,
+                             new_heuristic, this_g, insert_indices)  # todo implement lazy insert/collision check
+
+    def calc_new_random_config(self):
         # choose random config limited by the max insertion distance
         insert_rand = []
         for _ in range(self.tube_num):
@@ -124,29 +149,12 @@ class RRT(Solver):
             this_rot = this_delta_rotation + rot
             new_rotation.append(this_rot % (pi * 2))  # keeps rotations as [0, 2*pi)
 
-        # collision check
-        this_g, this_eta, insert_indices, true_insertion, ftl_heuristic = self.model.solve_integrate(delta_rotation,
-                                                                                                     delta_insert,
-                                                                                                     new_rotation,
-                                                                                                     new_insert,
-                                                                                                     g_neighbor)
-        obs_min, goal_dist = self.cd.check_collision(this_g, self.tube_rad)
-        if obs_min < 0:
-            pass
-        else:
-            new_index = len(self.tree.nodes)  # before insertion, so no -1
-            if goal_dist < 0:
-                self.tree.solution.append(new_index)
-                self.found_solution = True
-                goal_dist = 0
-            insert_fractions = [1 - (float(i) / self.insert_max) for i in true_insertion]  # inverse insertion
-            insert_frac = sum(insert_fractions)  # = 0 if all tubes are fully inserted; = tube_num if fully retracted
-            new_heuristic = self.heuristic_factory.create(min_obstacle_distance=obs_min,
-                                                          goal_distance=goal_dist,
-                                                          follow_the_leader=ftl_heuristic,
-                                                          insertion_fraction=insert_frac)
-            self.tree.insert(true_insertion, new_rotation, neighbor_index,
-                             new_heuristic, this_g, insert_indices)  # todo implement lazy insert/collision check
+        return delta_rotation, delta_insert, new_rotation, new_insert, neighbor_index, g_neighbor
+
+    # def insert_new_node(self, true_insertion, new_rotation, neighbor_index,
+    #                     this_g, insert_indices, new_heuristic, goal_dist):
+    #
+    #     return new_index
 
     def get_path(self, index):
         g_out = self.tree.get_tube_curves(index)

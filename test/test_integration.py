@@ -30,10 +30,10 @@ class VisualizeUtilsTest(unittest.TestCase):
 
     def test_RRT(self):
         path = pathlib.Path().absolute()
-        file = path / "configuration" / "config_integration.yaml"
+        file = path / "configuration" / "config_ftl.yaml"
         configuration, dictionaries = parse_config(file)
         objects_file = path / "configuration" / configuration.get("collision_objects_filename")
-        this_model = create_model(config=configuration, q=[[0.01, 0.0008], [0.02, 0.0005]])
+        this_model = create_model(config=configuration, q=[[0.04, 0.0005]])
 
         # heuristic factory
         heuristic_factory = create_heuristic_factory(configuration,
@@ -46,10 +46,13 @@ class VisualizeUtilsTest(unittest.TestCase):
 
         # call get_best_cost
         cost, best_ind = this_solver.get_best_cost()
+        print(cost)
 
         this_solver.visualize_best_solution(objects_file)
 
         this_solver.visualize_best_solution_path(objects_file)
+
+        x = 5
 
 
     def test_visualize_solve_once(self):
