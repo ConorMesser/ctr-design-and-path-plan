@@ -53,6 +53,7 @@ def linear_helix_strain(x, dof):
 def get_strains(names):
     strain_functions = []
     for n in names:
+        # check_qdof(n, q_dof) todo
         if n == 'helix':
             strain_functions.append(linear_helix_strain)
         elif n == 'pure_helix':
@@ -66,3 +67,35 @@ def get_strains(names):
         else:
             print(f'{n} is not a defined strain base.')
     return strain_functions
+
+
+def max_from_base(base, q_max, length, q_dof):
+    check_qdof(base, q_dof)
+    tube_array = []
+    if base == 'linear' or base == 'quadratic':
+        if base == 'linear':
+            reduced_max = q_max / length
+        else:
+            reduced_max = q_max / length**2
+        if q_dof >= 3:
+            tube_array = [q_max, -reduced_max]
+        elif q_dof == 2:
+            tube_array = [q_max]
+        tube_array.append(reduced_max)
+    else:
+        tube_array = [q_max] * q_dof
+    return tube_array
+
+
+def check_qdof(base, q_dof):
+    if base == 'helix' or base == 'pure_helix':
+        if q_dof != 2:
+            raise ValueError(f'{base} should have 2 degrees of freedom, not {q_dof}.')
+    elif base == 'quadratic' or base == 'linear':
+        if q_dof < 2 or q_dof > 3:
+            raise ValueError(f'{base} should have 2 or 3 degrees of freedom, not {q_dof}.')
+    elif base == 'constant':
+        if q_dof != 1:
+            raise ValueError(f'{base} should have 1 degrees of freedom, not {q_dof}.')
+    else:
+        print(f'{base} is not a defined strain base.')

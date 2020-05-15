@@ -28,7 +28,9 @@ rewire_probability: 0.1
 q_dof: 3
 num_discrete_points: 121
   # insertion_max: 120 - should match solver
-strain_bases: "linear, linear"  #  - number should match number of tubes ** can be set by main **
+strain_bases:
+  - "linear"
+  - "linear"  #  - number should match number of tubes ** can be set by main **
 
 # for obstacle weighted goal heuristic
 goal_weight: 3

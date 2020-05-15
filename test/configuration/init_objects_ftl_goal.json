@@ -1,0 +1,16 @@
+{
+  "goal": [
+    {
+    "mesh": true,
+    "filename": "follow_the_leader_goal.STL",
+    "transform": [
+      0,
+      0,
+      0
+    ]
+  }
+  ],
+  "obstacles": [
+
+    ]
+}

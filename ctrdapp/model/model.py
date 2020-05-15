@@ -11,7 +11,7 @@ class Model:
     def __init__(self, tube_num, q, q_dof, max_tube_length,
                  num_discrete_points, strain_base, strain_bias, model_type):
         self.tube_num = tube_num
-        self.q_dof = q_dof
+        self.q_dof = q_dof  # todo change q_dof to tube_dependent
         self.max_tube_length = max_tube_length
         self.num_discrete_points = num_discrete_points
         self.strain_base = strain_base
@@ -303,7 +303,7 @@ def save_g_positions(this_g, filename):
 
 
 def create_model(config, q):
-    names = config.get('strain_bases').split(', ')
+    names = config.get('strain_bases')
     strain_bases = get_strains(names)
     std_strain_bias = np.array([0, 0, 0, 1, 0, 0])
 
