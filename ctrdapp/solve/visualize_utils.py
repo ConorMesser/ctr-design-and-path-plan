@@ -2,6 +2,10 @@ import json
 import pyvista as pv
 import numpy as np
 import time
+from math import pi
+import matplotlib.path as mpath
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
 
 
 def parse_json(object_type, init_objects_file):
@@ -122,18 +126,39 @@ def add_objects(plotter, objects_file):
     plotter.add_mesh(plane, color='tan', opacity=0.4)
 
 
-def visualize_tree(from_points, to_points, node_list):
-    plotter = pv.Plotter()
-    # todo add labels/color based on node indices
+def visualize_tree(from_points, to_points, node_list):  # todo highlight best cost
+    fig, ax = plt.subplots()
 
-    plotter.add_axes_at_origin(xlabel='Tube 1', ylabel='Tube 2', zlabel='Tube 3')
-    plotter.add_mesh(pv.Sphere(radius=0.25, center=from_points[0]))
+    Path = mpath.Path
+    path_data = []
+    for from_pt, to_pt in zip(from_points, to_points):
+        if from_pt[1] > 5 and to_pt[1] < 2:
+            from_rot_mod = from_pt[1] - 2*pi
+            to_rot_mod = to_pt[1] + 2*pi
+            path_data.append((Path.MOVETO, [from_pt[0], from_rot_mod]))
+            path_data.append((Path.LINETO, to_pt))
+            path_data.append((Path.MOVETO, from_pt))
+            path_data.append((Path.LINETO, [to_pt[0], to_rot_mod]))
+        elif from_pt[1] < 2 and to_pt[1] > 5:
+            from_rot_mod = from_pt[1] + 2 * pi
+            to_rot_mod = to_pt[1] - 2 * pi
+            path_data.append((Path.MOVETO, [from_pt[0], from_rot_mod]))
+            path_data.append((Path.LINETO, to_pt))
+            path_data.append((Path.MOVETO, from_pt))
+            path_data.append((Path.LINETO, [to_pt[0], to_rot_mod]))
+        else:
+            path_data.append((Path.MOVETO, from_pt))
+            path_data.append((Path.LINETO, to_pt))
 
-    for ind, points in enumerate(zip(from_points, to_points)):
-        p_from = points[0]
-        p_to = points[1]
-        plotter.add_mesh(pv.Sphere(radius=0.25, center=p_to))
+    codes, verts = zip(*path_data)
+    path = mpath.Path(verts, codes)
+    patch = mpatches.PathPatch(path, lw=1, color='b')
+    ax.add_patch(patch)
 
-        plotter.add_mesh(pv.Line(p_from, p_to))
+    # plot points
+    x, y = zip(*path.vertices)
+    ax.plot(x, y, 'go', ms=2)
 
-    plotter.show()
+    ax.grid()
+    ax.set_ylim(0, 2*pi)  # set -pi to pi, so it starts in middle todo
+    plt.show()

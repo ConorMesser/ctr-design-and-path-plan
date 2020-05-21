@@ -33,7 +33,7 @@ class VisualizeUtilsTest(unittest.TestCase):
         file = path / "configuration" / "config_ftl.yaml"
         configuration, dictionaries = parse_config(file)
         objects_file = path / "configuration" / configuration.get("collision_objects_filename")
-        this_model = create_model(config=configuration, q=[[0.04, 0.0005]])
+        this_model = create_model(config=configuration, q=[[0.04]])
 
         # heuristic factory
         heuristic_factory = create_heuristic_factory(configuration,
@@ -48,9 +48,10 @@ class VisualizeUtilsTest(unittest.TestCase):
         cost, best_ind = this_solver.get_best_cost()
         print(cost)
 
-        this_solver.visualize_best_solution(objects_file)
-
-        this_solver.visualize_best_solution_path(objects_file)
+        # this_solver.visualize_best_solution(objects_file)
+        #
+        # this_solver.visualize_best_solution_path(objects_file)
+        this_solver.visualize_full_search()
 
         x = 5
 
