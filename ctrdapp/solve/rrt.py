@@ -1,10 +1,10 @@
-from math import pi
+from math import pi, sqrt
 import numpy as np
 
 from .solver import Solver
 from random import random
 from .dynamic_tree import DynamicTree
-from .step import step, get_single_tube_value
+from .step import step, step_rotation, get_single_tube_value
 from ..heuristic.heuristic_factory import HeuristicFactory
 from ..heuristic.heuristic import Heuristic
 from .visualize_utils import visualize_curve, visualize_curve_single, visualize_tree
@@ -39,7 +39,7 @@ class RRT(Solver):
         """int : number of iterations"""
         self.step_bound = configuration.get("step_bound")
         """float : maximum step size (from nearest neighbor) for new config"""
-        self.rotation_max = 0.349  # 10 degrees in either direction todo make this variable based on insertion?
+        self.rotation_max = 0.1745  # 10 degrees in either direction todo make this variable based on insertion?
         """float : maximum rotation from nearest neighbor, in Radians"""
         self.insert_max = configuration.get("insertion_max")
         """float : maximum tube/insertion length"""
@@ -61,9 +61,10 @@ class RRT(Solver):
                                                        insertion_fraction=self.tube_num)
         init_tube = [np.eye(4)]
         init_g_curves = [init_tube] * self.tube_num
+        scaling = [1, self.step_bound / self.rotation_max]
 
-        self.tree = DynamicTree(self.tube_num, [0] * self.tube_num,
-                                [0] * self.tube_num, init_heuristic, init_g_curves)
+        self.tree = DynamicTree(self.tube_num, [0] * self.tube_num, [0] * self.tube_num, init_heuristic, init_g_curves,
+                                self.iter_max, scaling)
         """DynamicTree : stores the tree information"""
         self._solve()  # rrt is solved at initialization
 
@@ -127,34 +128,21 @@ class RRT(Solver):
 
     def calc_new_random_config(self):
         # choose random config limited by the max insertion distance
-        insert_rand = []
+        tube_control_params = []
         for _ in range(self.tube_num):
-            insert_rand.append(random() * self.insert_max)
+            tube_control_params.append(random() * self.insert_max)
+            tube_control_params.append(random() * 2 * pi)
 
-        insert_neighbor, neighbor_index, neighbor_parent = self.tree.nearest_neighbor(insert_rand)
+        insert_neighbor, rotation_neighbor, neighbor_index, neighbor_parent = self.tree.nearest_neighbor(tube_control_params)
         if self.single_tube_control:
-            insert_rand, controlled_tube_num = get_single_tube_value(
-                insert_rand, insert_neighbor, neighbor_parent, 0.8, random())
-        new_insert = step(insert_neighbor, insert_rand, self.step_bound)
-
+            tube_control_params, controlled_tube_num = get_single_tube_value(
+                tube_control_params, insert_neighbor, rotation_neighbor, neighbor_parent, 0.8, random())
+        new_insert = step(insert_neighbor, tube_control_params, sqrt(self.step_bound))
+        new_rotation, delta_rotation = step_rotation(rotation_neighbor, tube_control_params, sqrt(self.step_bound)*self.rotation_max/self.step_bound)
         delta_insert = [new - old for new, old in zip(new_insert, insert_neighbor)]
-
         g_neighbor = self.tree.nodes[neighbor_index].g_curves
-        rotation_neighbor = self.tree.nodes[neighbor_index].rotation
-        new_rotation = []
-        delta_rotation = []
-        for rot in rotation_neighbor:
-            this_delta_rotation = (random() - 0.5) * self.rotation_max
-            delta_rotation.append(this_delta_rotation)
-            this_rot = this_delta_rotation + rot
-            new_rotation.append(this_rot % (pi * 2))  # keeps rotations as [0, 2*pi)
 
         return delta_rotation, delta_insert, new_rotation, new_insert, neighbor_index, g_neighbor
-
-    # def insert_new_node(self, true_insertion, new_rotation, neighbor_index,
-    #                     this_g, insert_indices, new_heuristic, goal_dist):
-    #
-    #     return new_index
 
     def get_path(self, index):
         g_out = self.tree.get_tube_curves(index)
@@ -195,31 +183,30 @@ class RRT(Solver):
             g_out_flat_list.append(curve)
         visualize_curve(g_out_flat_list, objects_file, self.tube_num, self.tube_rad)
 
-    def visualize_full_search(self):  # todo how to make more useful?
-        # check how many dim (greater than 3 unsupported? todo)
-        if self.tube_num > 3:
-            pass
+    def visualize_full_search(self, tube_num=0):  # todo how to make more useful?
 
         from_list = []
         to_list = []
         node_list = []
         # start at root of tree
         root_node = self.tree.nodes[0]
+        root_data = [root_node.insertion[tube_num], root_node.rotation[tube_num]]
         # collect from and to information, recur over children
         for i in root_node.children:
             child_from_l, child_to_l, children_nodes = self._tree_search_recur(
-                i, root_node.insertion)
+                i, root_data, tube_num)
             from_list = from_list + child_from_l
             to_list = to_list + child_to_l
             node_list = node_list + children_nodes
 
         visualize_tree(from_list, to_list, node_list)
 
-    def _tree_search_recur(self, child_index, parent_insertion):
+    def _tree_search_recur(self, child_index, parent_data, tube_num):
 
         this_child = self.tree.nodes[child_index]
-        from_list = [parent_insertion]
-        to_list = [this_child.insertion]
+        from_list = [parent_data]
+        child_data = [this_child.insertion[tube_num], this_child.rotation[tube_num]]
+        to_list = [child_data]
         node_list = [child_index]
 
         if not this_child.children:
@@ -227,7 +214,7 @@ class RRT(Solver):
         else:
             for ind in this_child.children:
                 children_from, children_to, children_nodes = self._tree_search_recur(
-                    ind, this_child.insertion)
+                    ind, child_data, tube_num)
                 from_list = from_list + children_from
                 to_list = to_list + children_to
                 node_list = node_list + children_nodes

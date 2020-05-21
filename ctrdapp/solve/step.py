@@ -1,9 +1,10 @@
 from numpy.linalg import norm
 from numpy import array, count_nonzero
-from math import floor
+from math import floor, pi
 
 
-def step(prev: [float], to: [float], max_bound: float) -> [float]:
+# todo CLEAN UP
+def step(prev: [float], control_params: [float], max_bound: float) -> [float]:
     """Returns a point between prev and to, at most max_bound distance from prev
 
     If the distance between the points, given by the norm is less than the
@@ -12,9 +13,9 @@ def step(prev: [float], to: [float], max_bound: float) -> [float]:
     Parameters
     ----------
     prev : list of float
-        the initial/from point
-    to : list of float
-        the goal/towards point
+        the initial/from point, including only insertions
+    control_params : list of float
+        the goal/towards point, including both insertions and rotations
     max_bound : float
         the maximum distance to travel from prev
 
@@ -27,6 +28,7 @@ def step(prev: [float], to: [float], max_bound: float) -> [float]:
     ValueError
         If the given points are of different dimensions
     """
+    to = control_params[::2]
     if len(prev) != len(to):
         raise ValueError("Given vectors are not the same dimension")
     vec = []
@@ -44,7 +46,43 @@ def step(prev: [float], to: [float], max_bound: float) -> [float]:
         return to
 
 
-def get_single_tube_value(insert_rand, insert_neighbor, neighbor_parent, probability, random_num):
+def step_rotation(prev: [float], control_params: [float], rotation_max: float):
+    to = control_params[1::2]
+    if len(prev) != len(to):
+        raise ValueError("Given vectors are not the same dimension")
+    vec = []
+    vec_with_dir = []
+    for p, t in zip(prev, to):
+        velocity = get_delta_rotation(p, t)
+        vec.append(abs(velocity))
+        vec_with_dir.append(velocity)
+
+    # if vector magnitude > max, multiply unit vector by max
+    vec_mag = norm(vec)
+    final = []
+    final_delta = []
+    if vec_mag > rotation_max:
+        for v, p in zip(vec_with_dir, prev):
+            delta = v * rotation_max / vec_mag
+            val = delta + p
+            final.append(val % (2 * pi))
+            final_delta.append(delta)
+        return final, final_delta
+    else:
+        return to, vec_with_dir
+
+
+def get_delta_rotation(prev, to):
+    magnitude = min(abs(to - prev), 2 * pi - abs(to - prev))
+    if (to > prev and (to - prev) < pi) or (prev > to and (prev - to) > pi):
+        direction = 1
+    else:
+        direction = -1
+
+    return magnitude * direction
+
+
+def get_single_tube_value(tube_control_params, insert_neighbor, rotation_neighbor, neighbor_parent, probability, random_num):
     """Returns an insertion vector with one changed value from insert_neighbor.
 
     Compares the insert_neighbor vector to its parent's vector to find the tube
@@ -55,10 +93,12 @@ def get_single_tube_value(insert_rand, insert_neighbor, neighbor_parent, probabi
 
     Parameters
     ----------
-    insert_rand : list of float
-        The new insertion array
+    tube_control_params : list of float
+        The new insertion and rotation array [ins0, rot0, ins1, rot1, ...]
     insert_neighbor : list of float
-        The nearest neighbor of the insert_rand array
+        The insertions of the nearest neighbor of the tube_control_params array
+    rotation_neighbor : list of float
+        The rotations of the nearest neighbor
     neighbor_parent : list of float
         The parent of the insert_neighbor array
     probability : float
@@ -74,7 +114,7 @@ def get_single_tube_value(insert_rand, insert_neighbor, neighbor_parent, probabi
     """
     tube_num = len(insert_neighbor)
     if tube_num == 1:
-        return insert_rand, 0
+        return tube_control_params, 0
     else:
         neighbor_diff = array([n - p for n, p in zip(insert_neighbor, neighbor_parent)])
         if count_nonzero(neighbor_diff) > 1:
@@ -93,13 +133,15 @@ def get_single_tube_value(insert_rand, insert_neighbor, neighbor_parent, probabi
             probability_other = (1 - probability) / (tube_num - 1)
             this_insertion_tube_num = possible_tubes[floor(shifted_r/probability_other)]
 
-        new_insert = []
+        new_params = []
         for i in range(tube_num):
             if i == this_insertion_tube_num:
-                new_insert.append(insert_rand[i])
+                new_params.append(tube_control_params[2*i-1])
+                new_params.append(tube_control_params[2*i])
             else:
-                new_insert.append(insert_neighbor[i])
-        return new_insert, this_insertion_tube_num
+                new_params.append(insert_neighbor[i])
+                new_params.append(rotation_neighbor[i])
+        return new_params, this_insertion_tube_num
 
 
 

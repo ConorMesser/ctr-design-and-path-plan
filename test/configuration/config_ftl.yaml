@@ -17,18 +17,18 @@ optimizer_precision: 0.00001
 step_bound: 2
 insertion_max: 50
 nearest_neighbor_function: 2
-iteration_number: 10000
-single_tube_control: True
+iteration_number: 5000
+single_tube_control: False
 
 # for rrt_star solver (in addition to rrt)
 rewire_probability: 0.1
 
 # for kinematic model
-q_dof: 2
+q_dof: 1
 num_discrete_points: 101
   # insertion_max: 50 - should match solver
 strain_bases:
-  - "linear"  #  - number should match number of tubes ** can also be set by main **
+  - "constant"  #  - number should match number of tubes ** can also be set by main **
 
 # for obstacle weighted goal heuristic
 goal_weight: 3
