@@ -36,8 +36,8 @@ def pure_helix_strain(x, dof):
     if dof > 2:
         print(f'Only 2 degrees of freedom are being used out of {dof}.')
     base = np.zeros([6, dof])
-    base[1, 0] = sin(x/15)  # y-bending
-    base[2, 1] = cos(x/15)  # z-bending
+    base[1, 0] = sin(x/10)  # y-bending
+    base[2, 1] = cos(x/10)  # z-bending
     return base
 
 
@@ -45,8 +45,18 @@ def linear_helix_strain(x, dof):
     if dof > 2:
         print(f'Only 2 degrees of freedom are being used out of {dof}.')
     base = np.zeros([6, dof])
-    base[1, 0] = sin(x/15)  # y-bending
-    base[2, 1] = x * cos(x/15)  # z-bending
+    base[1, 0] = sin(x/10)  # y-bending
+    base[2, 1] = x * cos(x/10)  # z-bending
+    return base
+
+
+def torsion_helix_strain(x, dof):
+    if dof > 3:
+        print(f'Only 3 degrees of freedom are being used out of {dof}.')
+    base = np.zeros([6, dof])
+    base[0, 0] = 1  # torsion
+    base[1, 1] = 1  # y-bending
+    base[2, 2] = 1  # z-bending
     return base
 
 
@@ -58,6 +68,8 @@ def get_strains(names):
             strain_functions.append(linear_helix_strain)
         elif n == 'pure_helix':
             strain_functions.append(pure_helix_strain)
+        elif n == 'torsion_helix':
+            strain_functions.append(torsion_helix_strain)
         elif n == 'quadratic':
             strain_functions.append(quadratic_strain)
         elif n == 'linear':
