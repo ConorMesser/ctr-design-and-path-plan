@@ -52,7 +52,7 @@ class DynamicTree:
 
         self.nodes = [first_node]
         """list of node: initialized with first node, filled by insert method"""
-        self.solution = []  # use if not test (= true) to check for empty list
+        self.at_goal = []  # use if not test (= true) to check for empty list
         """list of int: gives the indices of the successful nodes."""
 
     def nearest_neighbor(self, x):
@@ -187,12 +187,14 @@ class DynamicTree:
             self.nodes[ch].heuristic.calculate_cost_from_parent(parent_heuristic, reset=True)
             self.reset_heuristic_all_children(ch)
 
-    def swap_parents(self, current_ind, new_parent_ind, current_heuristic, new_parent_heuristic):
+    def swap_parents(self, current_ind, new_parent_ind, new_heuristic):
         previous_parent = self.nodes[current_ind].parent
+        new_parent_heuristic = self.nodes[new_parent_ind].heuristic
+        self.nodes[current_ind].heuristic = new_heuristic
         self.nodes[previous_parent].children.remove(current_ind)
         self.nodes[current_ind].parent = new_parent_ind
         self.nodes[new_parent_ind].children.append(current_ind)
-        current_heuristic.calculate_cost_from_parent(new_parent_heuristic, reset=True)
+        new_heuristic.calculate_cost_from_parent(new_parent_heuristic, reset=True)
         self.reset_heuristic_all_children(current_ind)
 
     def get_costs(self, child_ind):
@@ -205,7 +207,7 @@ class DynamicTree:
 
         Returns
         -------
-        list of float
+        [float]
             costs of each node from the given index to the root
         """
 
@@ -236,17 +238,21 @@ class DynamicTree:
             corresponds to index for "origin" SE3 array for each g_curve tube
         """
 
-        i = child_ind
-        insertion = [self.nodes[i].insertion]
-        rotation = [self.nodes[i].rotation]
-        insert_indices = [self.nodes[i].insert_indices]
-        while i != 0:
-            i = self.nodes[i].parent
-            insertion.append(self.nodes[i].insertion)
-            rotation.append(self.nodes[i].rotation)
-            insert_indices.append(self.nodes[i].insert_indices)
+        index_list = self.get_index_list(child_ind)
+        insertion = [self.nodes[i].insertion for i in index_list]
+        rotation = [self.nodes[i].rotation for i in index_list]
+        insert_indices = [self.nodes[i].insert_indices for i in index_list]
 
         return insertion, rotation, insert_indices
+
+    def get_index_list(self, child_ind):
+        i = child_ind
+        index_list = [i]
+        while i != 0:
+            i = self.nodes[i].parent
+            index_list.append(i)
+
+        return index_list
 
     def get_tube_curves(self, child_ind):
         """Retrieves list of g_curves from **child to root**
@@ -269,6 +275,24 @@ class DynamicTree:
             g_out.append(self.nodes[i].g_curves)
 
         return g_out
+
+    def save_tree(self, output_dir):
+        filename = output_dir / "tree.txt"
+        tree_file = open(filename, "w")
+
+        for i in range(len(self.nodes)):
+            ins_str = ", ".join(str(ins) for ins in self.nodes[i].insertion)
+            rot_str = ", ".join(str(rot) for rot in self.nodes[i].rotation)
+            parent_str = self.nodes[i].parent
+            if self.at_goal.__contains__(i):
+                at_goal = True
+            else:
+                at_goal = False
+            cost = self.nodes[i].heuristic.get_cost()
+            this_node_str = f"{i} | {ins_str} | {rot_str} | {parent_str} | {cost} | {at_goal}\n"
+            tree_file.write(this_node_str)
+
+        tree_file.close()
 
 
 class Node:

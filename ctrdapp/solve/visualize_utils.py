@@ -45,9 +45,10 @@ def parse_json(object_type, init_objects_file):
     return collision_objects
 
 
-def visualize_curve(curve, objects_file, tube_num, tube_rad, visualize_from_indices=None):
+def visualize_curve(curve, objects_file, tube_num, tube_rad, output_dir, filename, visualize_from_indices=None):
     plotter = pv.Plotter()
-    plotter.open_movie("this_movie.mp4", framerate=3)  # todo
+    full_filename = output_dir / f"{filename}.mp4"
+    plotter.open_movie(full_filename, framerate=3)  # todo
 
     add_objects(plotter, objects_file)
 
@@ -69,14 +70,15 @@ def visualize_curve(curve, objects_file, tube_num, tube_rad, visualize_from_indi
     plotter.close()
 
 
-def visualize_curve_single(curve, objects_file, tube_num, tube_rad, visualize_from_indices=None):
+def visualize_curve_single(curve, objects_file, tube_num, tube_rad, output_dir, filename, visualize_from_indices=None):
     plotter = pv.Plotter()
 
     add_objects(plotter, objects_file)
 
     _ = add_single_curve(plotter, curve, tube_num, tube_rad, visualize_from_indices)
 
-    plotter.show()
+    full_filename = output_dir / f"{filename}.pdf"
+    plotter.save_graphic(full_filename)
 
 
 # todo remove visualize_from_indices
@@ -126,39 +128,82 @@ def add_objects(plotter, objects_file):
     plotter.add_mesh(plane, color='tan', opacity=0.4)
 
 
-def visualize_tree(from_points, to_points, node_list):  # todo highlight best cost
+def visualize_tree(from_points, to_points, node_list, output_dir, filename, solution_list, at_goal_list, cost_list):
     fig, ax = plt.subplots()
 
-    Path = mpath.Path
     path_data = []
-    for from_pt, to_pt in zip(from_points, to_points):
-        if from_pt[1] > 5 and to_pt[1] < 2:
-            from_rot_mod = from_pt[1] - 2*pi
-            to_rot_mod = to_pt[1] + 2*pi
-            path_data.append((Path.MOVETO, [from_pt[0], from_rot_mod]))
-            path_data.append((Path.LINETO, to_pt))
-            path_data.append((Path.MOVETO, from_pt))
-            path_data.append((Path.LINETO, [to_pt[0], to_rot_mod]))
-        elif from_pt[1] < 2 and to_pt[1] > 5:
-            from_rot_mod = from_pt[1] + 2 * pi
-            to_rot_mod = to_pt[1] - 2 * pi
-            path_data.append((Path.MOVETO, [from_pt[0], from_rot_mod]))
-            path_data.append((Path.LINETO, to_pt))
-            path_data.append((Path.MOVETO, from_pt))
-            path_data.append((Path.LINETO, [to_pt[0], to_rot_mod]))
-        else:
-            path_data.append((Path.MOVETO, from_pt))
-            path_data.append((Path.LINETO, to_pt))
+    solution_data = []
+    goal_data = []
+    to_data = []
+    for from_pt, to_pt, node in zip(from_points, to_points, node_list):  # node index points to the TO node
+        solution_node = solution_list.__contains__(node)
+        goal_node = at_goal_list.__contains__(node)
 
+        if from_pt[1] > pi:
+            from_pt = [from_pt[0], from_pt[1] - 2*pi]
+        if to_pt[1] > pi:
+            to_pt = [to_pt[0], to_pt[1] - 2 * pi]
+
+        to_data.append(to_pt)
+
+        if abs(to_pt[1] - from_pt[1]) > pi:
+            if from_pt[1] > to_pt[1]:
+                pair_one = ([from_pt[0], from_pt[1] - 2*pi], to_pt)
+                pair_two = (from_pt, [to_pt[0], to_pt[1] + 2*pi])
+            else:
+                pair_one = ([from_pt[0], from_pt[1] + 2 * pi], to_pt)
+                pair_two = (from_pt, [to_pt[0], to_pt[1] - 2 * pi])
+
+            path_data.append((mpath.Path.MOVETO, pair_one[0]))
+            path_data.append((mpath.Path.LINETO, pair_one[1]))
+            path_data.append((mpath.Path.MOVETO, pair_two[0]))
+            path_data.append((mpath.Path.LINETO, pair_two[1]))
+
+            if solution_node:
+                solution_data.append((mpath.Path.MOVETO, pair_one[0]))
+                solution_data.append((mpath.Path.LINETO, pair_one[1]))
+                solution_data.append((mpath.Path.MOVETO, pair_two[0]))
+                solution_data.append((mpath.Path.LINETO, pair_two[1]))
+            if goal_node:
+                goal_data.append((mpath.Path.MOVETO, pair_one[1]))
+                goal_data.append((mpath.Path.MOVETO, pair_two[1]))
+        else:
+            path_data.append((mpath.Path.MOVETO, from_pt))
+            path_data.append((mpath.Path.LINETO, to_pt))
+
+            if solution_node:
+                solution_data.append((mpath.Path.MOVETO, from_pt))
+                solution_data.append((mpath.Path.LINETO, to_pt))
+            if goal_node:
+                goal_data.append((mpath.Path.MOVETO, to_pt))
+
+    # plot lines between points
     codes, verts = zip(*path_data)
     path = mpath.Path(verts, codes)
-    patch = mpatches.PathPatch(path, lw=1, color='b')
+    patch = mpatches.PathPatch(path, lw=0.5, color='0.6', zorder=1)
     ax.add_patch(patch)
 
+    # plot solution lines
+    codes, verts = zip(*solution_data)
+    solution_path = mpath.Path(verts, codes)
+    solution_patch = mpatches.PathPatch(solution_path, lw=0.6, color='r', zorder=2)
+    ax.add_patch(solution_patch)
+
     # plot points
-    x, y = zip(*path.vertices)
-    ax.plot(x, y, 'go', ms=2)
+    c = [cost / max(cost_list) for cost in cost_list]
+    x = [coord[0] for coord in to_data]
+    y = [coord[1] for coord in to_data]
+    ax.scatter(x, y, c=c, cmap='viridis_r', zorder=4, s=0.3)
+
+    # plot at_goal points
+    if goal_data:
+        codes, verts = zip(*goal_data)
+        goal_path = mpath.Path(verts, codes)
+        x_goal, y_goal = zip(*goal_path.vertices)
+        ax.scatter(x_goal, y_goal, color='k', s=2, zorder=3)
 
     ax.grid()
-    ax.set_ylim(0, 2*pi)  # set -pi to pi, so it starts in middle todo
-    plt.show()
+    ax.set_ylim(-pi, pi)
+
+    output_full = output_dir / f"{filename}.pdf"
+    plt.savefig(output_full)

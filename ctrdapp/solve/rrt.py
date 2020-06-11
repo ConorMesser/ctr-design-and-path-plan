@@ -6,7 +6,6 @@ from random import random
 from .dynamic_tree import DynamicTree
 from .step import step, step_rotation, get_single_tube_value
 from ..heuristic.heuristic_factory import HeuristicFactory
-from ..heuristic.heuristic import Heuristic
 from .visualize_utils import visualize_curve, visualize_curve_single, visualize_tree
 
 
@@ -39,13 +38,10 @@ class RRT(Solver):
         """int : number of iterations"""
         self.step_bound = configuration.get("step_bound")
         """float : maximum step size (from nearest neighbor) for new config"""
-        self.rotation_max = 0.1745  # 10 degrees in either direction todo make this variable based on insertion?
+        self.rotation_max = 0.1745  # 0.1745  # 10 degrees in either direction todo make this variable based on insertion?
         """float : maximum rotation from nearest neighbor, in Radians"""
         self.insert_max = configuration.get("insertion_max")
         """float : maximum tube/insertion length"""
-        self.nn_func = configuration.get("nearest_neighbor_function")
-        """int : the distance function used by numpy.spatial.KDTree
-        1 = Manhattan, 2 = Euclidean, infinity = maximum coordinate diff"""
         self.found_solution = False  # todo is this necessary?
         """boolean : has any Node collided with the goal?"""
         self.single_tube_control = configuration.get("single_tube_control")
@@ -61,7 +57,7 @@ class RRT(Solver):
                                                        insertion_fraction=self.tube_num)
         init_tube = [np.eye(4)]
         init_g_curves = [init_tube] * self.tube_num
-        scaling = [1, self.step_bound / self.rotation_max]
+        scaling = [1, 1] # [1, self.step_bound / self.rotation_max]
 
         self.tree = DynamicTree(self.tube_num, [0] * self.tube_num, [0] * self.tube_num, init_heuristic, init_g_curves,
                                 self.iter_max, scaling)
@@ -114,7 +110,7 @@ class RRT(Solver):
         else:
             new_index = len(self.tree.nodes)  # before insertion, so no -1
             if goal_dist < 0:
-                self.tree.solution.append(new_index)
+                self.tree.at_goal.append(new_index)
                 self.found_solution = True
                 goal_dist = 0
             insert_fractions = [1 - (float(i) / self.insert_max) for i in true_insertion]  # inverse insertion
@@ -151,7 +147,7 @@ class RRT(Solver):
 
     def get_best_cost(self):
         if self.found_solution:
-            solution_ind_list = self.tree.solution
+            solution_ind_list = self.tree.at_goal
         else:
             solution_ind_list = range(len(self.tree.nodes))
         best_index = 0
@@ -163,43 +159,80 @@ class RRT(Solver):
                 best_index = i
         return best_cost, best_index
 
-    def visualize_best_solution(self, objects_file):
-        _, best_index = self.get_best_cost()
-        self.visualize_from_index(best_index, objects_file)
+    def save_best_solution(self, output_dir):
+        """
 
-    def visualize_best_solution_path(self, objects_file):
-        _, best_index = self.get_best_cost()
-        self.visualize_from_index_path(best_index, objects_file)
+        Parameters
+        ----------
+        output_dir : pathlib.PosixPath
 
-    def visualize_from_index(self, index, objects_file):
+        Returns
+        -------
+
+        """
+        filename = output_dir / "solution_path.txt"
+        solution_file = open(filename, "w")
+        # with filename.open('w') as solution_file:
+
+        cost, best_index = self.get_best_cost()
+        solution_file.write(f"Cost: {cost}\n")
+        solution_list = self.tree.get_index_list(best_index)
+        solution_list.reverse()
+
+        ins_str = ", ".join(str(ind) for ind in solution_list)
+        solution_file.write(ins_str)
+
+        solution_file.close()
+
+    def save_tree(self, output_dir):
+        self.tree.save_tree(output_dir)
+
+    def visualize_best_solution(self, objects_file, output_dir):
+        _, best_index = self.get_best_cost()
+        self.visualize_from_index(best_index, objects_file, output_dir, "best_solution")
+
+    def visualize_best_solution_path(self, objects_file, output_dir):
+        _, best_index = self.get_best_cost()
+        self.visualize_from_index_path(best_index, objects_file, output_dir, "best_solution_animated")
+
+    def visualize_from_index(self, index, objects_file, output_dir, filename):
         g_out, insert, rotate, insert_indices = self.get_path(index)
         g_out_flat = g_out[0]
-        visualize_curve_single(g_out_flat, objects_file, self.tube_num, self.tube_rad)
+        visualize_curve_single(g_out_flat, objects_file, self.tube_num, self.tube_rad, output_dir, filename)
 
-    def visualize_from_index_path(self, index, objects_file):
+    def visualize_from_index_path(self, index, objects_file, output_dir, filename):
         g_out, insert, rotate, insert_indices = self.get_path(index)
         g_out_flat_list = []
         for curve in reversed(g_out):
             g_out_flat_list.append(curve)
-        visualize_curve(g_out_flat_list, objects_file, self.tube_num, self.tube_rad)
+        visualize_curve(g_out_flat_list, objects_file, self.tube_num, self.tube_rad, output_dir, filename)
 
-    def visualize_full_search(self, tube_num=0):  # todo how to make more useful?
+    def visualize_full_search(self, output_dir, tube_num=0, with_solution=True):
 
         from_list = []
         to_list = []
         node_list = []
+        cost_list = []
         # start at root of tree
         root_node = self.tree.nodes[0]
         root_data = [root_node.insertion[tube_num], root_node.rotation[tube_num]]
         # collect from and to information, recur over children
         for i in root_node.children:
-            child_from_l, child_to_l, children_nodes = self._tree_search_recur(
+            child_from_l, child_to_l, children_nodes, children_costs = self._tree_search_recur(
                 i, root_data, tube_num)
             from_list = from_list + child_from_l
             to_list = to_list + child_to_l
             node_list = node_list + children_nodes
+            cost_list = cost_list + children_costs
 
-        visualize_tree(from_list, to_list, node_list)
+        if with_solution:
+            _, best_index = self.get_best_cost()
+            solution_list = self.tree.get_index_list(best_index)
+        else:
+            solution_list = []
+
+        visualize_tree(from_list, to_list, node_list, output_dir, "full_tree",
+                       solution_list, self.tree.at_goal, cost_list)
 
     def _tree_search_recur(self, child_index, parent_data, tube_num):
 
@@ -208,14 +241,16 @@ class RRT(Solver):
         child_data = [this_child.insertion[tube_num], this_child.rotation[tube_num]]
         to_list = [child_data]
         node_list = [child_index]
+        cost_list = [this_child.heuristic.get_own_cost()]  # [this_child.heuristic.get_cost()]
 
         if not this_child.children:
-            return from_list, to_list, node_list
+            return from_list, to_list, node_list, cost_list
         else:
             for ind in this_child.children:
-                children_from, children_to, children_nodes = self._tree_search_recur(
+                children_from, children_to, children_nodes, children_costs = self._tree_search_recur(
                     ind, child_data, tube_num)
                 from_list = from_list + children_from
                 to_list = to_list + children_to
                 node_list = node_list + children_nodes
-            return from_list, to_list, node_list
+                cost_list = cost_list + children_costs
+            return from_list, to_list, node_list, cost_list
