@@ -1,23 +1,23 @@
 # config.yaml file
 
 optimizer_type: "nelder_mead"
-solver_type: "rrt_star"
+solver_type: "rrt"
 model_type: "kinematic"
 heuristic_type: "follow_the_leader"
 tube_number: 1
 tube_radius:
-- 0.9
+- 5
 collision_objects_filename: "init_objects_ftl_goal.json"
+run_identifier: "Constant_test_added_rot"
 
 # for nelder mead
 optimize_iterations: 1
 optimizer_precision: 0.00001
 
 # for rrt solver
-step_bound: 2
+step_bound: 1
 insertion_max: 50
-nearest_neighbor_function: 2
-iteration_number: 5000
+iteration_number: 10000
 single_tube_control: False
 
 # for rrt_star solver (in addition to rrt)
@@ -25,10 +25,14 @@ rewire_probability: 0.1
 
 # for kinematic model
 q_dof: 1
-num_discrete_points: 101
+num_discrete_points: 51
   # insertion_max: 50 - should match solver
 strain_bases:
   - "constant"  #  - number should match number of tubes ** can also be set by main **
 
 # for obstacle weighted goal heuristic
 goal_weight: 3
+
+# for follow the leader heuristic
+only_tip: True
+insertion_weight: 10  # with insertion consideration

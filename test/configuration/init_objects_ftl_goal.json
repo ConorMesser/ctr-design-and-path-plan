@@ -2,7 +2,7 @@
   "goal": [
     {
     "mesh": true,
-    "filename": "follow_the_leader_goal.STL",
+    "filename": "follow_the_leader_goal_multiple.STL",
     "transform": [
       0,
       0,
