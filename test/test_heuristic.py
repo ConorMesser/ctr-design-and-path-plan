@@ -1,7 +1,8 @@
 import unittest
+import numpy as np
 
 from ctrdapp.heuristic.only_goal_distance import OnlyGoalDistance
-from ctrdapp.heuristic.square_obstacle_avg_plus_weighted_goal import SquareObstacleAvgPlusWeightedGoal
+from ctrdapp.heuristic.obstacles_and_goal import SquareObstacleAvgPlusWeightedGoal
 from ctrdapp.heuristic.follow_the_leader import FollowTheLeaderWInsertion, FollowTheLeader
 
 
@@ -72,14 +73,16 @@ class TestSOAPWG(unittest.TestCase):
 
 class TestFTL(unittest.TestCase):
     def setUp(self) -> None:
-        self.ftl_0 = FollowTheLeader(True, [[[0, 0, 0, 100, 0, 0], [0, 0, 0, 100, 0, 0]]])
-        self.ftl_1 = FollowTheLeader(True, [[[0, 0, 0, 2, 2, 1], [4, 0, 3, 0, 0, 0]]])
-        self.ftl_2 = FollowTheLeader(True, [[[0, 0, 0, 2, 2, 1], [2, 1, 2, 0, 5, 10]]])
-        self.ftl_3 = FollowTheLeader(True, [[[6, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 1]]])
+        self.ftl_0 = FollowTheLeader(True, [[np.array([0, 0, 0, 100, 0, 0]), np.array([0, 0, 0, 100, 0, 0])]])
+        self.ftl_1 = FollowTheLeader(True, [[np.array([0, 0, 0, 2, 2, 1]), np.array([4, 0, 3, 0, 0, 0])]])
+        self.ftl_2 = FollowTheLeader(True, [[np.array([0, 0, 0, 2, 2, 1]), np.array([2, 1, 2, 0, 5, 10])]])
+        self.ftl_3 = FollowTheLeader(True, [[np.array([6, 0, 0, 0, 0, 0]), np.array([1, 0, 0, 0, 0, 0]),
+                                             np.array([0, 0, 0, 0, 0, 1])]])
 
-        self.ftl_1_full = FollowTheLeader(False, [[[0, 0, 0, 2, 2, 1], [4, 0, 3, 0, 0, 0]]])
-        self.ftl_2_full = FollowTheLeader(False, [[[0, 0, 0, 2, 2, 1], [2, 1, 2, 0, 5, 10]]])
-        self.ftl_3_full = FollowTheLeader(False, [[[6, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 1]]])
+        self.ftl_1_full = FollowTheLeader(False, [[np.array([0, 0, 0, 2, 2, 1]), np.array([4, 0, 3, 0, 0, 0])]])
+        self.ftl_2_full = FollowTheLeader(False, [[np.array([0, 0, 0, 2, 2, 1]), np.array([2, 1, 2, 0, 5, 10])]])
+        self.ftl_3_full = FollowTheLeader(False, [[np.array([6, 0, 0, 0, 0, 0]), np.array([1, 0, 0, 0, 0, 0]),
+                                                   np.array([0, 0, 0, 0, 0, 1])]])
 
     def testMagnitude(self):
         self.assertEqual(self.ftl_0.get_cost(), 100)
@@ -126,9 +129,9 @@ class TestFTL(unittest.TestCase):
 
 class TestFTLInsertion(unittest.TestCase):
     def setUp(self) -> None:
-        self.ftl_length_0 = FollowTheLeaderWInsertion(True, 10, [[[2, 0, 0, 0, 0, 0]]], 1.5)
-        self.ftl_length_1 = FollowTheLeaderWInsertion(True, 10, [[[4, 0, 0, 0, 0, 0]]], 1)
-        self.ftl_length_2 = FollowTheLeaderWInsertion(True, 10, [[[6, 0, 0, 0, 0, 0]]], 0.5)
+        self.ftl_length_0 = FollowTheLeaderWInsertion(True, 10, [[np.array([2, 0, 0, 0, 0, 0])]], 1.5)
+        self.ftl_length_1 = FollowTheLeaderWInsertion(True, 10, [[np.array([4, 0, 0, 0, 0, 0])]], 1)
+        self.ftl_length_2 = FollowTheLeaderWInsertion(True, 10, [[np.array([6, 0, 0, 0, 0, 0])]], 0.5)
 
     def testCost(self):
         self.assertEqual(self.ftl_length_0.get_cost(), 17)

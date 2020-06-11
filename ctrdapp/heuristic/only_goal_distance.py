@@ -1,7 +1,21 @@
+"""The Heuristic class using only the goal distance."""
+
 from .heuristic import Heuristic
 
 
 class OnlyGoalDistance(Heuristic):
+    """Heuristic using only the distance from the goal.
+
+    Parameters
+    ----------
+    goal_dist : float
+        The distance from the goal for this Heuristic
+
+    Attributes
+    ----------
+    cost : float
+        The cost for this Heuristic
+    """
 
     def __init__(self, goal_dist):
         self.cost = goal_dist

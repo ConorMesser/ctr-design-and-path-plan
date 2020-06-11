@@ -1,5 +1,7 @@
+"""Contains the CollisionChecker class for collision queries."""
+
 import numpy as np
-import fcl
+import fcl  # package name is in Pipfile "python-fcl"
 from .init_collision import add_goal, add_obstacles
 from numpy.linalg import norm
 
@@ -12,13 +14,23 @@ class CollisionChecker:
     init_collision.py file. Then, a curve (list of x, y, z coordinates) can be
     given to check for collision with obstacles and with the goal. This class
     serves as a convenient interface to work with the python-fcl wrapper.
+
+    Parameters
+    ----------
+    init_objects_file : pathlib.PosixPath
+        path to the json file describing the obstacles and goal
+
+    Attributes
+    ----------
+    obstacles : list of fcl.CollisionObjects
+        obstacle objects in the environment
+    goal : fcl.CollisionObject
+        goal object in the environment
     """
 
     def __init__(self, init_objects_file):
         self.obstacles = add_obstacles(init_objects_file)
-        """list of CollisionObjects : obstacle objects in the environment"""
         self.goal = add_goal(init_objects_file)
-        """CollisionObject : goal object in the environment"""
 
     def check_collision(self, curve, rad):
         """Determine if the curve given collides with obstacles or goal.
@@ -30,17 +42,15 @@ class CollisionChecker:
 
         Parameters
         ----------
-        curve : list of list of 4x4 numpy arrays
-            The SE3 g values for each curve
-        rad : list of float
+        curve : list[list[numpy.array]]
+            list of 4x4 SE3 for each curve, with points given in last column
+        rad : list[float]
             radii of the tubes
 
         Returns
         -------
-        float
-            minimum distance between curve and obstacles
-        float
-            minimum distance between curve and goal
+        (float, float)
+            minimum distance between curve and (obstacles, goal).
         """
 
         tube = self._build_tube(curve, rad)
@@ -49,7 +59,7 @@ class CollisionChecker:
         tube_manager.setup()
         obstacle_min = self._distance_check(tube_manager, self.obstacles)
 
-        s = fcl.Sphere(rad[-1])
+        s = fcl.Sphere(rad[-1])  # creates a sphere with radius of last tube
         final_point = curve[-1][-1][0:3, 3]
         t = fcl.Transform(final_point)  # coordinates of last point of tube
         tip = fcl.CollisionObject(s, t)
@@ -65,8 +75,10 @@ class CollisionChecker:
 
         Parameters
         ----------
-        tube_manager : DynamicAABBTreeCollisionManager
-        environment : list of CollisionObjects
+        tube_manager : fcl.DynamicAABBTreeCollisionManager
+            the collision manager with all tubes
+        environment : list[fcl.CollisionObjects]
+            list of collision objects
 
         Returns
         -------
@@ -94,14 +106,14 @@ class CollisionChecker:
 
         Parameters
         ----------
-        curve : list of list of 4x4 numpy arrays (SE3)
-            list of SE3 for each curve, with points given in last column
-        rad : list of float
+        curve : list[list[numpy.array]]
+            list of 4x4 SE3 for each curve, with points given in last column
+        rad : list[float]
             radii of the tubes
 
         Returns
         -------
-        list of CollisionObject
+        list[fcl.CollisionObject]
             collection of cylinders that discretize the curve/tube
         """
 
@@ -121,16 +133,14 @@ class CollisionChecker:
                 cyl = fcl.Cylinder(rad[n], length)
 
                 if unit_vec[2] == -1.0:  # if vector is in -z direction
-                    unit_quat = [0, 1, 0, 0]  # gives 180 degree rotation
+                    unit_quaternion = [0, 1, 0, 0]  # gives 180 degree rotation
                 else:
-                    # quat = [1 + dot(init_vec, unit_vec), cross(init_vec, unit_vec)]
-                    #    where init_vec is the z-axis unit vector [0, 0, 1]
-                    quat = [1 + unit_vec[2], -unit_vec[1], unit_vec[0], 0]
-                    quat_mag = norm(quat)
-                    unit_quat = [q / quat_mag for q in quat]
+                    quaternion = [1 + unit_vec[2], -unit_vec[1], unit_vec[0], 0]
+                    quaternion_magnitude = norm(quaternion)
+                    unit_quaternion = [q / quaternion_magnitude for q in quaternion]
 
                 translate = np.array(mid_point)
-                rotate = np.array(unit_quat)
+                rotate = np.array(unit_quaternion)
                 transform = fcl.Transform(rotate, translate)
 
                 obj = fcl.CollisionObject(cyl, transform)

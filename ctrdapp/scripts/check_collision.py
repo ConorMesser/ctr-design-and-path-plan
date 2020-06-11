@@ -20,7 +20,7 @@ def main():
     print("\ngoal: ")
     print(goal)
 
-    visualize_curve_single(curve, objects_file, 1, [1])
+    visualize_curve_single(curve, objects_file, 1, [1], output_path, filename)
 
 
 if __name__ == "__main__":
