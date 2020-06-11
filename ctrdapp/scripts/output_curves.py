@@ -19,7 +19,8 @@ def main():
     this_g = this_model.solve_g(indices=[0])
     save_g_positions(this_g, "single_helix_tube_smaller.txt")
 
-    visualize_curve_single(this_g, objects_file, configuration.get("tube_number"), configuration.get("tube_radius"))
+    visualize_curve_single(this_g, objects_file, configuration.get("tube_number"), configuration.get("tube_radius"),
+                           output_path, filename)
 
 
 if __name__ == "__main__":

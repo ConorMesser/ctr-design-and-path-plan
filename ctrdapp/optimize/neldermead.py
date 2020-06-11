@@ -14,7 +14,8 @@ class NelderMead(Optimizer):
     def __init__(self, heuristic_factory, collision_checker, initial_guess, configuration):
         super().__init__(heuristic_factory, collision_checker, initial_guess, configuration)
 
-        self.solver_store = []
+        self.solver_results = []
+        self.best_solver = {'cost': 100000000, 'solver': None}
         self.costs = []
 
     def find_min(self):
@@ -47,14 +48,12 @@ class NelderMead(Optimizer):
         end_time = time.time()
 
         optimize_result = OptimizeResult(optimize_result_nm.x,
-                                         self._find_solver(optimize_result_nm.x),
+                                         self.best_solver.get('solver'),
                                          optimize_result_nm.success,
                                          optimize_result_nm.nfev,
                                          optimize_result_nm.nit,
                                          end_time - start_time,
-                                         self.solver_store)
-
-        # optimize_result.graph_process()
+                                         self.solver_results)
 
         return optimize_result
 
@@ -71,19 +70,21 @@ class NelderMead(Optimizer):
         cost, index = this_solver.get_best_cost()
 
         solver_dict = {'q': this_solver.model.q, 'cost': cost}
-        self.solver_store.append(solver_dict)
+        self.solver_results.append(solver_dict)
 
-        # return cost
+        if cost < self.best_solver.get('cost'):
+            self.best_solver = {'cost': cost, 'solver': this_solver}
+
         return cost
 
     def _find_solver(self, array):
-        for s in self.solver_store:
+        for s in self.solver_results:
             this_q = s.get('q')
             if (this_q.flatten() == array.flatten()).all():
                 return s
         print(f"Could not find desired solver for q = {array}. "
               f"Giving last solver instead.")
-        return self.solver_store[-1]
+        return self.solver_results[-1]
 
 
 # Q should be bounded (in both + and -) by (2*Emax)/Tube Diameter

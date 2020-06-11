@@ -38,3 +38,36 @@ class OptimizeResult:
 
         # plt.savefig("mygraph.png")
         plt.show()
+
+    def save_result(self, output_dir):
+        """
+        -save tree
+        -save solution (path for tree)
+        -save general info (times, iter_num, best Q and best cost?)
+        -save process
+        """
+        self.best_solver.save_tree(output_dir)
+        self.best_solver.save_best_solution(output_dir)
+        self.best_solver.visualize_full_search(output_dir, with_solution=True)
+
+        filename = output_dir / "optimize_result.txt"
+        optimize_result = open(filename, "w")
+
+        optimize_result.write(f"Success: {self.success}\n")
+        optimize_result.write(f"Completion Time: {self.completion_time}\n")
+        optimize_result.write(f"Number of Iterations: {self.num_iterations}\n")
+        optimize_result.write(f"Number of Function Evals: {self.num_function_eval}\n")
+        q = ", ".join(str(i) for i in self.best_q)
+        optimize_result.write(f"Optimized Q: {q}\n")
+
+        optimize_result.close()
+
+        filename = output_dir / "optimize_process.txt"
+        optimize_process = open(filename, "w")
+
+        for i in range(len(self.optimize_process)):
+            q = ", ".join(str(j) for j in self.optimize_process[i].get('q'))
+            cost = self.optimize_process[i].get('cost')
+            optimize_process.write(f"{q} | {cost}\n")
+
+        optimize_process.close()
