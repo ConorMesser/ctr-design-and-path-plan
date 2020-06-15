@@ -1,3 +1,5 @@
+"""Kinematic strain-based model."""
+
 import numpy as np
 from math import ceil, floor
 import pathlib
@@ -6,10 +8,57 @@ from .matrix_utils import big_adjoint, hat, exponential_map, t_exponential
 from .strain_bases import get_strains
 
 
-class Model:
+class Kinematic:
+    """The kinematic strain-based model
 
+    Stores the configuration data for a model, and
+    provides interface to solve for g and eta based on
+    given configuration (s, theta, v, omega, etc.).
+
+    Parameters
+    ----------
+    tube_num : int
+        number of tubes
+    q : list[float] or list[list[float]]
+        bending parameters for each tube
+        (will be multiplied by the strain bases)
+    q_dof : int
+        number of degrees of freedom (applies to each tube)
+    max_tube_length : int
+        maximum tube length (applies to each tube)
+    num_discrete_points : int
+        number of discrete points along each tube
+    strain_base : list[function]
+        function defining each tube's strain base
+    strain_bias : np.ndarray
+        bias strain for tube structure, x-elongation is default
+    model_type : str  # todo delete
+
+    Attributes
+    ----------
+    tube_num : int
+        number of tubes
+    q : ndarray
+        bending parameters for each tube
+        (will be multiplied by the strain bases)
+    q_dof : int
+        number of degrees of freedom (applies to each tube)
+    max_tube_length : int
+        maximum tube length (applies to each tube)
+    num_discrete_points : int
+        number of discrete points along each tube
+    strain_base : list[function]
+        function defining each tube's strain base
+    strain_bias : np.ndarray
+        bias strain for tube structure, x-elongation is default
+    delta_x : float
+        size of this discretization, based on max_tube_length
+        and num_discrete_points
+    q_dot_bool : bool  # todo delete
+    """
     def __init__(self, tube_num, q, q_dof, max_tube_length,
-                 num_discrete_points, strain_base, strain_bias, model_type):
+                 num_discrete_points, strain_base, model_type,
+                 strain_bias=np.array([0, 0, 0, 1, 0, 0])):
         self.tube_num = tube_num
         self.q_dof = q_dof  # todo change q_dof to tube_dependent
         self.max_tube_length = max_tube_length
@@ -17,54 +66,52 @@ class Model:
         self.strain_base = strain_base
         self.strain_bias = strain_bias
         self.q_dot_bool = model_type == 'Static'
+        self.delta_x = self.max_tube_length / (self.num_discrete_points - 1)
 
-        if len(q) == tube_num * q_dof and not isinstance(q[0], list):  # q given as single list
+        # q given as single list
+        if len(q) == tube_num * q_dof and not isinstance(q[0], list):
             q_list = []
             for i in range(tube_num):
                 q_list.append(q[i*q_dof:(i + 1)*q_dof])
             self.q = np.asarray(q_list)
-        elif len(q) == tube_num:  # q given as nested-list
+        elif len(q) == tube_num:  # q given as nested-list, one for each tube
             self.q = np.asarray(q)
         else:
             raise ValueError(f"Given q of {q} is not the correct size.")
 
-        self.delta_x = self.max_tube_length / (self.num_discrete_points - 1)
-
-    def solve_integrate(self, delta_theta, delta_insertion, this_theta, this_insertion, prev_g, invert_insert=True):
+    def solve_integrate(self, delta_theta, delta_insertion, this_theta,
+                        this_insertion, prev_g, invert_insert=True):
         """Calculate the g and eta for one step in space.
-
-        Calculates the g_prime based on the theta and insertion arrays
-        and reconstructs this g based on the g_prime. The eta is calculated
-        using the theta and insertion deltas as well as the calculated q_dot.
 
         Parameters
         ----------
-        delta_theta : list-like of float
+        delta_theta : list[float]
             change in theta values for each tube
-        delta_insertion : list-like of float
+        delta_insertion : list[float]
             change in insertion values for each tube
-        this_theta : list-like of float
+        this_theta : list[float]
             rotation values for each tube
-        this_insertion : list-like of float
+        this_insertion : list[float]
             insertion values for each tube
-        prev_g : list of list of 4x4 SE3 array
-            SE3 g values for each tube from s to L of the previous insertion
+        prev_g : list[list[np.ndarray]]
+            4x4 SE3 g values for each tube from s to L of the previous insertion
         invert_insert : bool
             True if insertion values are given intuitively (with s(0) = 0 and
             s(L) = L; false otherwise (default is True))
 
         Returns
         -------
-        list : updated SE3 g values for each tube from s to L
-            g_out[tube_num][index] = [4x4 SE3 array]
-        list : eta value for each tube
-            eta_out[tube_num][0] = eta -> (eta stored in list for consistency)
-        list : insertion indices for each tube
+        (list[list[np.ndarray]], list[list[np.ndarray]], list[int], list[float], list[np.ndarray])
+            --updated SE3 g values for each tube from s to L,
+            where g_out[tube_num][index] = [4x4 SE3 array]
+            --eta value for each tube, where
+            eta_out[tube_num][0] = eta -> (eta stored in list for consistency)..
+            --insertion indices for each tube, where
             insert_indices[tube_num] = int
-        list : true insertion values (rounded based on discretization)
-            true_insertions[tube_num] = float
-        list : follow-the-leader array (g_dot minus g_prime) for each tube from s to L
-            ftl_out[tube_num] = [6x1 array]
+            --true insertion values (rounded based on discretization),
+            where true_insertions[tube_num] = float
+            --follow-the-leader array (g_dot minus g_prime) for each tube from s to L,
+            where ftl_out[tube_num] = [6x1 array]
         """
 
         # kinematic model is defined as s(0)=L no insertion and s=0 for full insertion
@@ -72,13 +119,12 @@ class Model:
             this_insertion = [self.max_tube_length - ins for ins in this_insertion]
             delta_insertion = [-delta_ins for delta_ins in delta_insertion]
 
-        # velocity is kept as given; it doesn't correspond to the discretization
+        # velocity is kept as given; it doesn't correspond to the discretization  todo impact on FTL
         velocity = [-delta_ins for delta_ins in delta_insertion]
         prev_insertion = [ins - delta for ins, delta in zip(this_insertion, delta_insertion)]
         prev_insert_indices, new_insert_indices = calculate_indices(prev_insertion, this_insertion,
                                                                     self.max_tube_length, self.delta_x)
 
-        # todo should I calculate prev_g???
         g_out = self.solve_g(indices=new_insert_indices, thetas=this_theta, full=False)
         eta_out, ftl_out = self.solve_eta(velocity, prev_insert_indices, delta_theta, prev_g)
 
@@ -95,21 +141,23 @@ class Model:
         At default, the tips of each tube will be aligned with the origin, with
         no rotation or insertion. If indices are given, the given index of each
         tube will be aligned with the tip of the previous tube with theta
-        rotation along x-axis wrt previous tube (*** check this ***)
+        rotation along x-axis wrt previous tube.
 
         Parameters
         ---------
-        indices : list of int (optional)
+        indices : list[int]
             Insertion index for each tube, with initial as default (no insertion)
-        thetas : list of float (optional)
+        thetas : list[float]
             Theta for each tube, with initial (0) as default
-        full : boolean (optional)
+        full : boolean
             Is the full tube needed (default) or just the segment past the insertion index?
 
         Returns
         -------
-        list : g values for each tube
-            g_out[tube number] = [4x4 SE3 array]"""
+        list[list[np.ndarray]]
+            g values for each tube,
+            where g_out[tube number] = [4x4 SE3 array]
+        """
 
         if indices is None:  # default to zero insertion, with s(0) = L
             indices = [self.num_discrete_points - 1] * self.tube_num
@@ -121,6 +169,8 @@ class Model:
         x_axis_unit = np.array([1, 0, 0, 0, 0, 0])
 
         for n in range(self.tube_num):
+            # get this tube's initial g by applying theta rotation
+            # to previous tube's final g
             theta_hat = hat(thetas[n] * x_axis_unit)
             theta_exp = exponential_map(thetas[n], theta_hat)
             g_previous = g_previous @ theta_exp
@@ -160,6 +210,28 @@ class Model:
 
     def solve_eta(self, velocity_list, prev_insert_indices_list,
                   delta_theta_list, prev_g):
+        """Calculates eta and follow_the_leader array for given parameters.
+
+        Parameters
+        ----------
+        velocity_list : list[float]
+            velocity (delta s) for each tube, previous - current(/new)
+        prev_insert_indices_list : list[int]
+            previous insert index for each tube
+        delta_theta_list : list[float]
+            delta theta for each tube, previous - current(/new)
+        prev_g : list[list[np.ndarray]]
+            4x4 SE3 g values for each tube from s to L of the previous insertion
+
+
+        Returns
+        -------
+        (list[list[np.ndarray]], list[list[np.ndarray]])
+            --eta value for each tube, where
+            eta_out[tube_num][0] = eta -> (eta stored in list for consistency)..
+            --follow-the-leader array (g_dot minus g_prime in local frame) for
+            each tube from s to L, where ftl_out[tube_num] = [6x1 array]
+        """
         eta_out = []
         ftl_out = []
         eta_previous_tube = np.zeros(6)  # in spatial frame
@@ -170,8 +242,6 @@ class Model:
             # todo limit max delta_theta
             velocity_sum = velocity_sum + velocity_list[n]
 
-            # strain_base must be list of functions, strain bias is np.array
-            # q as list of n arrays of size dof
             ksi_here = self.strain_base[n](
                 self.delta_x * prev_insert_indices_list[n], self.q_dof) @ self.q[n] + self.strain_bias
 
@@ -208,18 +278,18 @@ class Model:
                 # compute the g_prime based on the previous insertion
                 this_base = self.strain_base[n](self.delta_x * i, self.q_dof)
                 ksi_here = this_base @ self.q[n] + self.strain_bias
-                g_prime = velocity_sum * big_adjoint(prev_g[n][this_prev_g_index]) @ ksi_here
 
-                ftl_here = eta_r_here - g_prime
+                # FTL calculated in the local frame
+                g_prime = velocity_sum * ksi_here
+                this_g = prev_g[n][this_prev_g_index]
+                eta_r_local = big_adjoint(np.linalg.inv(this_g)) @ eta_r_here
+                ftl_here = eta_r_local - g_prime
                 this_ftl_heuristic.append(ftl_here)
 
-            eta_previous_tube = eta_r_here  # big_adjoint(np.linalg.inv(g_previous)) @ eta_r_here todo check?
+            eta_previous_tube = eta_r_here
             eta_out.append(this_eta_r)  # eta is output w.r.t spatial frame
             ftl_out.append(this_ftl_heuristic)
         return eta_out, ftl_out
-
-    def get_data(self):
-        pass
 
 
 def calculate_indices(prev_insertions, next_insertions, max_tube_length, delta_x):
@@ -233,20 +303,20 @@ def calculate_indices(prev_insertions, next_insertions, max_tube_length, delta_x
 
     Parameters
     ----------
-    prev_insertions : list of float
-    next_insertions : list of float
+    prev_insertions : list[float]
+        previous insertion values
+    next_insertions : list[float]
+        next (desired) insertion values
     max_tube_length : float
+        maximum tube length, giving insertion bound
     delta_x : float
-        The discretization size (or size of one index)
+        The discretization size (size of one index)
 
     Returns
     -------
-    list of int :
-        the final index value for the previous insertion
-    list of int :
-        the final index value for the next insertion
-    list of int :
-        the delta between the two insertions (given as a number of indices)
+    (list[int], list[int])
+        --the final index values for the previous insertion
+        --the final index values for the next insertion
     """
     prev_insert_indices = []
     new_insert_indices = []
@@ -289,6 +359,19 @@ def calculate_indices(prev_insertions, next_insertions, max_tube_length, delta_x
 
 
 def save_g_positions(this_g, filename):
+    """Saves only the position portion of the given g curve.
+
+    Parameters
+    ----------
+    this_g : list[list[np.ndarray]]
+        given 4x4 SE3 g values for each tube
+    filename : str
+        filename to use for saving
+
+    Returns
+    -------
+    None
+    """
     path = pathlib.Path().absolute()
     file = path / "outputs" / filename
 
@@ -303,10 +386,24 @@ def save_g_positions(this_g, filename):
 
 
 def create_model(config, q):
+    """Creates a model based on the given configuration.
+
+    Parameters
+    ----------
+    config : dict
+        configuration dictionary
+    q : list[float] or list[list[float]]
+        bending parameters for each tube
+
+    Returns
+    -------
+    Kinematic
+        kinematic model object with parameters given
+        by the configuration dictionary and given q
+    """
     names = config.get('strain_bases')
     strain_bases = get_strains(names)
     std_strain_bias = np.array([0, 0, 0, 1, 0, 0])
 
-    return Model(config.get('tube_number'), q, config.get('q_dof'),
-                 config.get('insertion_max'), config.get('num_discrete_points'),
-                 strain_bases, std_strain_bias, config.get('model_type'))
+    return Kinematic(config.get('tube_number'), q, config.get('q_dof'), config.get('insertion_max'),
+                     config.get('num_discrete_points'), strain_bases, config.get('model_type'), std_strain_bias)

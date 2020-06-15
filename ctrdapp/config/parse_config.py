@@ -41,7 +41,8 @@ def parse_config(file):
     heuristics = {"square_obstacle_avg_plus_weighted_goal": ["goal_weight"],
                   "only_goal_distance": [],
                   "follow_the_leader": ["only_tip"],
-                  "follow_the_leader_w_insertion": ["only_tip", "insertion_weight"]}
+                  "follow_the_leader_w_insertion": ["only_tip", "insertion_weight"],
+                  "follow_the_leader_translation": ["only_tip"]}
 
     # groups together the required parameter dictionaries
     dictionaries = {"optimizer": optimizers, "solver": solvers,
