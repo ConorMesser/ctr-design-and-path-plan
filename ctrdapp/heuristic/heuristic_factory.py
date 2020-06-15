@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from .obstacles_and_goal import SquareObstacleAvgPlusWeightedGoal
 from .only_goal_distance import OnlyGoalDistance
-from .follow_the_leader import FollowTheLeader, FollowTheLeaderWInsertion
+from .follow_the_leader import FollowTheLeader, FollowTheLeaderWInsertion, FollowTheLeaderTranslation
 from .heuristic import Heuristic
 
 
@@ -157,6 +157,19 @@ class FTLWInsertionFactory(FTLFactory):
                            insertion_fraction=heuristic.insertion_fraction)
 
 
+class FTLTranslationFactory(FTLFactory):
+
+    def __init__(self, only_tip, *args):
+        super().__init__(only_tip, *args)
+
+    def create(self, **kwargs) -> FollowTheLeaderTranslation:
+        return FollowTheLeaderTranslation(self.only_tip, kwargs.get('follow_the_leader'))
+
+    def create_from_old(self, heuristic: FollowTheLeaderTranslation, **kwargs) -> FollowTheLeaderTranslation:
+        # follow the leader will be updated in the arguments
+        return self.create(**kwargs)
+
+
 def create_heuristic_factory(configuration, heuristic_dict) -> HeuristicFactory:
     """Creates the heuristic factory based on the given configuration dictionary.
 
@@ -183,6 +196,8 @@ def create_heuristic_factory(configuration, heuristic_dict) -> HeuristicFactory:
         return FTLFactory(*params)
     elif name == "follow_the_leader_w_insertion":
         return FTLWInsertionFactory(*params)
+    elif name == "follow_the_leader_translation":
+        return FTLTranslationFactory(*params)
     else:
         raise UserWarning(f"{name} is not a defined heuristic. "
                           f"Change config file.")
