@@ -5,7 +5,7 @@ from math import pi
 from time import strftime
 
 from ctrdapp.config.parse_config import parse_config
-from ctrdapp.model.model import create_model
+from ctrdapp.model.kinematic import create_model
 from ctrdapp.solve.visualize_utils import visualize_curve_single, add_single_curve, add_objects
 from ctrdapp.heuristic.heuristic_factory import create_heuristic_factory
 from ctrdapp.collision.collision_checker import CollisionChecker
@@ -50,7 +50,7 @@ class VisualizeUtilsTest(unittest.TestCase):
             output_path.mkdir(parents=True)
 
         objects_file = path / "configuration" / configuration.get("collision_objects_filename")
-        this_model = create_model(config=configuration, q=[[0.04]])
+        this_model = create_model(config=configuration, q=[[0.05, 0.05]])
 
         # heuristic factory
         heuristic_factory = create_heuristic_factory(configuration,

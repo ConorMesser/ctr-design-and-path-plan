@@ -9,7 +9,7 @@ from ctrdapp.solve.dynamic_tree import Node
 from ctrdapp.solve.step import step, step_rotation, get_single_tube_value
 from ctrdapp.solve.visualize_utils import parse_json
 from ctrdapp.heuristic.only_goal_distance import OnlyGoalDistance
-from ctrdapp.heuristic.square_obstacle_avg_plus_weighted_goal import SquareObstacleAvgPlusWeightedGoal
+from ctrdapp.heuristic.obstacles_and_goal import SquareObstacleAvgPlusWeightedGoal
 
 
 class TestDynamicTree(unittest.TestCase):
@@ -189,7 +189,7 @@ class TestDynamicTree(unittest.TestCase):
         self.assertEqual(heuristic_four.get_cost(), 11/3)
         self.assertEqual(heuristic_five.get_cost(), 4)
 
-        tree.swap_parents(2, 5, heuristic_two, heuristic_five)
+        tree.swap_parents(2, 5, new_heuristic)
 
         self.assertEqual(heuristic_one.get_cost(), 1)
         self.assertEqual(heuristic_two.get_cost(), 5/2)

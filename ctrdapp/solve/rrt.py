@@ -38,7 +38,7 @@ class RRT(Solver):
         """int : number of iterations"""
         self.step_bound = configuration.get("step_bound")
         """float : maximum step size (from nearest neighbor) for new config"""
-        self.rotation_max = 0.1745  # 0.1745  # 10 degrees in either direction todo make this variable based on insertion?
+        self.rotation_max = 0.35  # 0.1745  # 10 degrees in either direction todo make this variable based on insertion?
         """float : maximum rotation from nearest neighbor, in Radians"""
         self.insert_max = configuration.get("insertion_max")
         """float : maximum tube/insertion length"""
@@ -57,7 +57,7 @@ class RRT(Solver):
                                                        insertion_fraction=self.tube_num)
         init_tube = [np.eye(4)]
         init_g_curves = [init_tube] * self.tube_num
-        scaling = [1, 1] # [1, self.step_bound / self.rotation_max]
+        scaling = [1, self.step_bound / self.rotation_max]
 
         self.tree = DynamicTree(self.tube_num, [0] * self.tube_num, [0] * self.tube_num, init_heuristic, init_g_curves,
                                 self.iter_max, scaling)

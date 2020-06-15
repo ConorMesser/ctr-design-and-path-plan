@@ -1,7 +1,7 @@
 import pathlib
 
 from ctrdapp.config.parse_config import parse_config
-from ctrdapp.model.model import create_model, save_g_positions
+from ctrdapp.model.kinematic import create_model, save_g_positions
 from ctrdapp.solve.visualize_utils import visualize_curve_single
 
 

@@ -3,7 +3,7 @@ import numpy as np
 import time
 
 from .optimizer import Optimizer
-from ..model.model import create_model
+from ..model.kinematic import create_model
 from ..solve.solver_factory import create_solver
 from ctrdapp.model.strain_bases import max_from_base
 from .optimize_result import OptimizeResult

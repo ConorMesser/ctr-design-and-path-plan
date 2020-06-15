@@ -4,7 +4,7 @@ import math
 import timeit
 
 from ctrdapp.model import matrix_utils
-from ctrdapp.model.model import Model, calculate_indices
+from ctrdapp.model.kinematic import Kinematic, calculate_indices
 from ctrdapp.model.strain_bases import linear_strain, constant_strain
 
 
@@ -100,14 +100,14 @@ class TestKinematic(unittest.TestCase):
         base1 = [linear_strain]
         base2 = [linear_strain, linear_strain]
 
-        self.no_strain1 = Model(1, no_strain_q1, 2, 1, 11, base1, strain_bias, 'Kinematic')
-        self.no_strain1_rough = Model(1, no_strain_q1, 2, 1, 3, base1, strain_bias, 'Kinematic')
-        self.no_strain1_fine = Model(1, no_strain_q1, 2, 1, 21, base1, strain_bias, 'Kinematic')
-        self.no_strain2 = Model(2, no_strain_q2, 2, 1, 11, base2, strain_bias, 'Kinematic')
-        self.constant_strain1 = Model(1, constant_q1, 2, math.pi/2, 11, base1, strain_bias, 'Kinematic')
-        self.constant_strain1_fine = Model(1, constant_q1, 2, math.pi/2, 21, base1, strain_bias, 'Kinematic')
-        self.constant_strain2 = Model(2, constant_q2, 2, math.pi/2, 11, base2, strain_bias, 'Kinematic')
-        self.combo = Model(2, no_strain_1_constant_2, 2, 1, 11, base2, strain_bias, 'Kinematic')
+        self.no_strain1 = Kinematic(1, no_strain_q1, 2, 1, 11, base1, 'Kinematic', strain_bias)
+        self.no_strain1_rough = Kinematic(1, no_strain_q1, 2, 1, 3, base1, 'Kinematic', strain_bias)
+        self.no_strain1_fine = Kinematic(1, no_strain_q1, 2, 1, 21, base1, 'Kinematic', strain_bias)
+        self.no_strain2 = Kinematic(2, no_strain_q2, 2, 1, 11, base2, 'Kinematic', strain_bias)
+        self.constant_strain1 = Kinematic(1, constant_q1, 2, math.pi / 2, 11, base1, 'Kinematic', strain_bias)
+        self.constant_strain1_fine = Kinematic(1, constant_q1, 2, math.pi / 2, 21, base1, 'Kinematic', strain_bias)
+        self.constant_strain2 = Kinematic(2, constant_q2, 2, math.pi / 2, 11, base2, 'Kinematic', strain_bias)
+        self.combo = Kinematic(2, no_strain_1_constant_2, 2, 1, 11, base2, 'Kinematic', strain_bias)
 
         self.constant_tip = np.array([[0, 0, 1, 1],
                                       [0, 1, 0, 0],
@@ -324,7 +324,7 @@ class TestKinematic(unittest.TestCase):
         strain_bias = np.array([0, 0, 0, 1, 0, 0])
         strain_base = [constant_strain]
 
-        model = Model(1, np.array([0.05]), 1, 50, 101, strain_base, strain_bias, 'Kinematic')
+        model = Kinematic(1, np.array([0.05]), 1, 50, 101, strain_base, 'Kinematic', strain_bias)
         prev_g_out = model.solve_g([38], [0], full=False)
 
         _, ftl_out = model.solve_eta([-2], [38], [0], prev_g_out)
@@ -338,7 +338,7 @@ class TestKinematic(unittest.TestCase):
         strain_bias = np.array([0, 0, 0, 1, 0, 0])
         strain_base = [constant_strain, constant_strain]
 
-        model = Model(2, np.array([0.05, 0.03]), 1, 50, 101, strain_base, strain_bias, 'Kinematic')
+        model = Kinematic(2, np.array([0.05, 0.03]), 1, 50, 101, strain_base, 'Kinematic', strain_bias)
         prev_g_out = model.solve_g([76, 78], [0, 0], full=False)
 
         _, ftl_out = model.solve_eta([-2, -1], [76, 78], [0, 0], prev_g_out)
