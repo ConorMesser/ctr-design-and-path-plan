@@ -80,7 +80,6 @@ class VisualizeUtilsTest(unittest.TestCase):
         file = path / "configuration" / "config_integration.yaml"
         configuration, dictionaries = parse_config(file)
         objects_file = path / "configuration" / configuration.get("collision_objects_filename")
-        configuration["strain_bases"] = "linear, linear, quadratic"
         this_model = create_model(config=configuration, q=[[-0.02, 0.001], [0.03, 0.002]])
 
         # get g previous (using solve_g)

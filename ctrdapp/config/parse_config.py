@@ -37,7 +37,7 @@ def parse_config(file):
     solvers = {"rrt": ["step_bound", "iteration_number",
                        "insertion_max", "single_tube_control"],
                "rrt_star": ["step_bound", "iteration_number", "insertion_max"]}
-    models = {"kinematic": ["q_dof", "num_discrete_points", "insertion_max"]}
+    models = {"kinematic": ["q_dof", "delta_x", "insertion_max"]}
     heuristics = {"square_obstacle_avg_plus_weighted_goal": ["goal_weight"],
                   "only_goal_distance": [],
                   "follow_the_leader": ["only_tip"],
@@ -63,7 +63,7 @@ def parse_config(file):
                 "rewire_probability": 0.1,
                 "goal_weight": 2,
                 "q_dof": 3,
-                "num_discrete_points": 101,
+                "delta_x": 1,
                 "single_tube_control": True,
                 "optimize_iterations": 50,
                 "only_tip": True,

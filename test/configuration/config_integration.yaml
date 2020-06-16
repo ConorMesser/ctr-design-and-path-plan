@@ -23,9 +23,11 @@ single_tube_control: False
 
 # for kinematic model
 q_dof: 2
-num_discrete_points: 121
-  # insertion_max: 50 - should match solver
-strain_bases: "linear, helix"  # specify anything? should get this from main, but what about for testing?
+delta_x: 0.5
+# insertion_max: 50 - should match solver
+strain_bases:
+  - "linear"
+  - "quadratic"
 
 # for obstacle weighted goal heuristic
 goal_weight: 0.1

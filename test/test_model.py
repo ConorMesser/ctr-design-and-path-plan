@@ -100,14 +100,25 @@ class TestKinematic(unittest.TestCase):
         base1 = [linear_strain]
         base2 = [linear_strain, linear_strain]
 
-        self.no_strain1 = Kinematic(1, no_strain_q1, 2, 1, 11, base1, 'Kinematic', strain_bias)
-        self.no_strain1_rough = Kinematic(1, no_strain_q1, 2, 1, 3, base1, 'Kinematic', strain_bias)
-        self.no_strain1_fine = Kinematic(1, no_strain_q1, 2, 1, 21, base1, 'Kinematic', strain_bias)
-        self.no_strain2 = Kinematic(2, no_strain_q2, 2, 1, 11, base2, 'Kinematic', strain_bias)
-        self.constant_strain1 = Kinematic(1, constant_q1, 2, math.pi / 2, 11, base1, 'Kinematic', strain_bias)
-        self.constant_strain1_fine = Kinematic(1, constant_q1, 2, math.pi / 2, 21, base1, 'Kinematic', strain_bias)
-        self.constant_strain2 = Kinematic(2, constant_q2, 2, math.pi / 2, 11, base2, 'Kinematic', strain_bias)
-        self.combo = Kinematic(2, no_strain_1_constant_2, 2, 1, 11, base2, 'Kinematic', strain_bias)
+        self.no_strain1 = Kinematic(1, no_strain_q1, [2], [1], 0.1,
+                                    base1, strain_bias=strain_bias)
+        self.no_strain1_rough = Kinematic(1, no_strain_q1, [2], [1], 0.5,
+                                          base1, strain_bias=strain_bias)
+        self.no_strain1_fine = Kinematic(1, no_strain_q1, [2], [1], 0.05,
+                                         base1, strain_bias=strain_bias)
+        self.no_strain2 = Kinematic(2, no_strain_q2, [2, 2], [1, 1], 0.1,
+                                    base2, strain_bias=strain_bias)
+        self.constant_strain1 = Kinematic(1, constant_q1, [2],
+                                          [math.pi / 2], math.pi / 20,
+                                          base1, strain_bias=strain_bias)
+        self.constant_strain1_fine = Kinematic(1, constant_q1, [2],
+                                               [math.pi / 2], math.pi / 40,
+                                               base1, strain_bias=strain_bias)
+        self.constant_strain2 = Kinematic(2, constant_q2, [2, 2],
+                                          [math.pi / 2, math.pi / 2], math.pi / 20,
+                                          base2, strain_bias=strain_bias)
+        self.combo = Kinematic(2, no_strain_1_constant_2, [2, 2], [1, 1], 11,
+                               base2, strain_bias=strain_bias)
 
         self.constant_tip = np.array([[0, 0, 1, 1],
                                       [0, 1, 0, 0],
@@ -293,15 +304,13 @@ class TestKinematic(unittest.TestCase):
         np.testing.assert_equal(eta_test, np.array([[[0, 0, 0, 0.1, 0, 0]]]))
         np.testing.assert_equal(ftl_heuristic, [[0, 0, 0]])
 
-        # test for q_dot todo
-
     def test_solve_once_speed(self):
         # zero insertion
         iter_num = 5000
         this_g = self.no_strain1_rough.solve_g([2], [0])
         time = timeit.Timer(lambda: self.no_strain1_rough.solve_integrate(
             [0], [-0.501], [1], [0.499], this_g, invert_insert=False)).timeit(iter_num)
-        self.assertLess(time/iter_num, 0.0002)
+        self.assertLess(time/iter_num, 0.0004)
 
     def test_solve_g_speed(self):
         iter_num = 500
@@ -324,7 +333,7 @@ class TestKinematic(unittest.TestCase):
         strain_bias = np.array([0, 0, 0, 1, 0, 0])
         strain_base = [constant_strain]
 
-        model = Kinematic(1, np.array([0.05]), 1, 50, 101, strain_base, 'Kinematic', strain_bias)
+        model = Kinematic(1, [np.array([0.05])], [1], [50], 0.5, strain_base, strain_bias=strain_bias)
         prev_g_out = model.solve_g([38], [0], full=False)
 
         _, ftl_out = model.solve_eta([-2], [38], [0], prev_g_out)
@@ -338,7 +347,7 @@ class TestKinematic(unittest.TestCase):
         strain_bias = np.array([0, 0, 0, 1, 0, 0])
         strain_base = [constant_strain, constant_strain]
 
-        model = Kinematic(2, np.array([0.05, 0.03]), 1, 50, 101, strain_base, 'Kinematic', strain_bias)
+        model = Kinematic(2, [np.array([0.05]), np.array([0.03])], [1, 1], [50, 50], 0.5, strain_base, strain_bias=strain_bias)
         prev_g_out = model.solve_g([76, 78], [0, 0], full=False)
 
         _, ftl_out = model.solve_eta([-2, -1], [76, 78], [0, 0], prev_g_out)
@@ -384,7 +393,9 @@ class TestKinematic(unittest.TestCase):
         self.calc_indices_convenience(10.27, 10.31, 103, 104, 1, delta_x=0.1)
         self.calc_indices_convenience(10.31, 10.27, 103, 102, -1, delta_x=0.1)
 
-    def calc_indices_convenience(self, prev_init, next_init, prev_out, next_out, delta_out, max_tube=50, delta_x=1.):
+    def calc_indices_convenience(self, prev_init, next_init, prev_out, next_out, delta_out, max_tube=None, delta_x=1.):
+        if max_tube is None:
+            max_tube = [50]
         prev_insert_index, new_insert_index = calculate_indices([prev_init], [next_init], max_tube, delta_x)
         self.assertEqual(prev_insert_index, [prev_out])
         self.assertEqual(new_insert_index, [next_out])

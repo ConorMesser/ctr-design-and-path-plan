@@ -9,7 +9,7 @@ from .strain_bases import get_strains
 
 
 class Kinematic:
-    """The kinematic strain-based model
+    """The kinematic strain-based model.
 
     Stores the configuration data for a model, and
     provides interface to solve for g and eta based on
@@ -19,65 +19,52 @@ class Kinematic:
     ----------
     tube_num : int
         number of tubes
-    q : list[float] or list[list[float]]
+    q : np.ndarray[list[float]] or list[np.ndarray[float]]
         bending parameters for each tube
         (will be multiplied by the strain bases)
-    q_dof : int
-        number of degrees of freedom (applies to each tube)
-    max_tube_length : int
-        maximum tube length (applies to each tube)
-    num_discrete_points : int
+    q_dof : list[int]
+        number of degrees of freedom for each tube
+    max_tube_length : list[float]
+        maximum tube length for each tube
+    delta_x : float
         number of discrete points along each tube
     strain_base : list[function]
         function defining each tube's strain base
     strain_bias : np.ndarray
         bias strain for tube structure, x-elongation is default
-    model_type : str  # todo delete
 
     Attributes
     ----------
     tube_num : int
         number of tubes
-    q : ndarray
+    q : np.ndarray[list[float]] or list[np.ndarray[float]]
         bending parameters for each tube
         (will be multiplied by the strain bases)
-    q_dof : int
-        number of degrees of freedom (applies to each tube)
-    max_tube_length : int
-        maximum tube length (applies to each tube)
-    num_discrete_points : int
-        number of discrete points along each tube
+    q_dof : list[int]
+        number of degrees of freedom for each tube
+    max_tube_length : list[float]
+        maximum tube length for each tube
+    num_discrete_points : [int]
+        number of discrete points along each tube,
+        based on delta_x and max_tube_length
     strain_base : list[function]
         function defining each tube's strain base
     strain_bias : np.ndarray
         bias strain for tube structure, x-elongation is default
     delta_x : float
-        size of this discretization, based on max_tube_length
-        and num_discrete_points
-    q_dot_bool : bool  # todo delete
+        size of this discretization
     """
-    def __init__(self, tube_num, q, q_dof, max_tube_length,
-                 num_discrete_points, strain_base, model_type,
+    def __init__(self, tube_num, q, q_dof, max_tube_length, delta_x, strain_base,
                  strain_bias=np.array([0, 0, 0, 1, 0, 0])):
         self.tube_num = tube_num
-        self.q_dof = q_dof  # todo change q_dof to tube_dependent
         self.max_tube_length = max_tube_length
-        self.num_discrete_points = num_discrete_points
+        self.delta_x = delta_x
         self.strain_base = strain_base
         self.strain_bias = strain_bias
-        self.q_dot_bool = model_type == 'Static'
-        self.delta_x = self.max_tube_length / (self.num_discrete_points - 1)
-
-        # q given as single list
-        if len(q) == tube_num * q_dof and not isinstance(q[0], list):
-            q_list = []
-            for i in range(tube_num):
-                q_list.append(q[i*q_dof:(i + 1)*q_dof])
-            self.q = np.asarray(q_list)
-        elif len(q) == tube_num:  # q given as nested-list, one for each tube
-            self.q = np.asarray(q)
-        else:
-            raise ValueError(f"Given q of {q} is not the correct size.")
+        self.q_dof = q_dof
+        self.q = q
+        self.num_discrete_points = [round(length / delta_x) + 1 for
+                                    length in max_tube_length]
 
     def solve_integrate(self, delta_theta, delta_insertion, this_theta,
                         this_insertion, prev_g, invert_insert=True):
@@ -116,7 +103,7 @@ class Kinematic:
 
         # kinematic model is defined as s(0)=L no insertion and s=0 for full insertion
         if invert_insert:
-            this_insertion = [self.max_tube_length - ins for ins in this_insertion]
+            this_insertion = [length - ins for ins, length in zip(this_insertion, self.max_tube_length)]
             delta_insertion = [-delta_ins for delta_ins in delta_insertion]
 
         # velocity is kept as given; it doesn't correspond to the discretization  todo impact on FTL
@@ -129,7 +116,8 @@ class Kinematic:
         eta_out, ftl_out = self.solve_eta(velocity, prev_insert_indices, delta_theta, prev_g)
 
         if invert_insert:
-            true_insertions = [self.max_tube_length - (ind * self.delta_x) for ind in new_insert_indices]
+            true_insertions = [length - (ind * self.delta_x) for ind, length in
+                               zip(new_insert_indices, self.max_tube_length)]
         else:
             true_insertions = [ind * self.delta_x for ind in new_insert_indices]
 
@@ -160,7 +148,7 @@ class Kinematic:
         """
 
         if indices is None:  # default to zero insertion, with s(0) = L
-            indices = [self.num_discrete_points - 1] * self.tube_num
+            indices = [disc - 1 for disc in self.num_discrete_points] * self.tube_num
         if thetas is None:
             thetas = [0] * self.tube_num
 
@@ -182,9 +170,9 @@ class Kinematic:
                 index_start = indices[n] + 1
 
             # compute insertion w.r.t previous tube tip
-            for i in range(index_start, self.num_discrete_points):  # todo Jacobian and q_dot
+            for i in range(index_start, self.num_discrete_points[n]):
                 centered_s = (i - 0.5) * self.delta_x
-                this_centered_base = self.strain_base[n](centered_s, self.q_dof)
+                this_centered_base = self.strain_base[n](centered_s, self.q_dof[n])
 
                 ksi_here_center = this_centered_base @ self.q[n] + self.strain_bias
                 norm_k_here_center = np.linalg.norm(ksi_here_center[0:3])
@@ -243,40 +231,21 @@ class Kinematic:
             velocity_sum = velocity_sum + velocity_list[n]
 
             ksi_here = self.strain_base[n](
-                self.delta_x * prev_insert_indices_list[n], self.q_dof) @ self.q[n] + self.strain_bias
+                self.delta_x * prev_insert_indices_list[n], self.q_dof[n]) @ self.q[n] + self.strain_bias
 
             # Adjoint of this tube's g_initial puts eta in spatial (world) frame
             eta_tr1 = big_adjoint(prev_g[n][0]) * delta_theta_list[n] @ x_axis_unit
             eta_tr2 = big_adjoint(prev_g[n][0]) * velocity_list[n] @ ksi_here
 
-            if self.q_dot_bool:
-                this_q_dot = None  # todo calculate q_dot - should be array with size q_dof
-                jacobian_r_init = np.zeros([6, self.q_dof])
-                eta_cr_here = jacobian_r_init @ this_q_dot
-                jacobian_r_previous = jacobian_r_init
-            else:
-                eta_cr_here = 0
-
-            eta_r_here = eta_previous_tube + eta_tr1 + eta_tr2 + eta_cr_here
+            eta_r_here = eta_previous_tube + eta_tr1 + eta_tr2
             this_eta_r = [eta_r_here]
             this_ftl_heuristic = []
 
-            for i in range(prev_insert_indices_list[n], self.num_discrete_points):
+            for i in range(prev_insert_indices_list[n], self.num_discrete_points[n]):
                 this_prev_g_index = i - prev_insert_indices_list[n]
-                if self.q_dot_bool and i != prev_insert_indices_list[n]:  # todo what about when tube inside other tube?
-                    this_centered_base = self.strain_base[n]((i - 0.5) * self.delta_x, self.q_dof)
-                    ksi_here_center = this_centered_base @ self.q[n] + self.strain_bias
-                    norm_k_here_center = np.linalg.norm(ksi_here_center[0:3])
-
-                    jacobian_r_here = jacobian_r_previous + big_adjoint(prev_g[n][this_prev_g_index-1]) @ t_exponential(
-                        self.delta_x, norm_k_here_center, ksi_here_center) @ this_centered_base
-                    eta_cr_here = jacobian_r_here @ this_q_dot
-                    jacobian_r_previous = jacobian_r_here
-                    eta_r_here = eta_previous_tube + eta_tr1 + eta_tr2 + eta_cr_here
-                    this_eta_r.append(eta_r_here)
 
                 # compute the g_prime based on the previous insertion
-                this_base = self.strain_base[n](self.delta_x * i, self.q_dof)
+                this_base = self.strain_base[n](self.delta_x * i, self.q_dof[n])
                 ksi_here = this_base @ self.q[n] + self.strain_bias
 
                 # FTL calculated in the local frame
@@ -292,7 +261,7 @@ class Kinematic:
         return eta_out, ftl_out
 
 
-def calculate_indices(prev_insertions, next_insertions, max_tube_length, delta_x):
+def calculate_indices(prev_insertions, next_insertions, max_tube_lengths, delta_x):
     """Calculates indices from given insertion values with respect to certain rules.
 
     Neither the previous nor the next insertion values can go beyond the range [0, max_tube_length]. The final delta
@@ -307,8 +276,8 @@ def calculate_indices(prev_insertions, next_insertions, max_tube_length, delta_x
         previous insertion values
     next_insertions : list[float]
         next (desired) insertion values
-    max_tube_length : float
-        maximum tube length, giving insertion bound
+    max_tube_lengths : list[float]
+        maximum tube lengths, giving insertion bound for each tube
     delta_x : float
         The discretization size (size of one index)
 
@@ -321,18 +290,20 @@ def calculate_indices(prev_insertions, next_insertions, max_tube_length, delta_x
     prev_insert_indices = []
     new_insert_indices = []
     for n in range(len(prev_insertions)):
+        max_length = max_tube_lengths[n]
+
         prev_insertion = prev_insertions[n]
         next_insertion = next_insertions[n]
 
         if prev_insertion < 0:
             prev_insertion = 0
-        elif prev_insertion > max_tube_length:
-            prev_insertion = max_tube_length
+        elif prev_insertion > max_length:
+            prev_insertion = max_length
 
         if next_insertion < 0:
             next_insertion = 0
-        elif next_insertion > max_tube_length:
-            next_insertion = max_tube_length
+        elif next_insertion > max_length:
+            next_insertion = max_length
 
         delta_index = next_insertion - prev_insertion
 
@@ -401,9 +372,33 @@ def create_model(config, q):
         kinematic model object with parameters given
         by the configuration dictionary and given q
     """
+    tube_num = config.get('tube_number')
     names = config.get('strain_bases')
-    strain_bases = get_strains(names)
-    std_strain_bias = np.array([0, 0, 0, 1, 0, 0])
 
-    return Kinematic(config.get('tube_number'), q, config.get('q_dof'), config.get('insertion_max'),
-                     config.get('num_discrete_points'), strain_bases, config.get('model_type'), std_strain_bias)
+    config_dof = config.get('q_dof')
+    if isinstance(config_dof, int):  # q_dof given as int (each tube has same dof)
+        output_q_dof = [config_dof] * tube_num
+        print(f'Each base has same degrees of freedom: {config_dof}.')
+    else:  # q_dof given as list
+        output_q_dof = config_dof
+    strain_bases = get_strains(names, output_q_dof)
+
+    # q given as single list
+    if len(q) == sum(output_q_dof) and not isinstance(q[0], list):
+        q_list = []
+        for i in range(tube_num):
+            q_list.append(q[i * output_q_dof[i]:(i + 1) * output_q_dof[i]])
+        output_q = np.asarray(q_list)
+    elif len(q) == tube_num:  # q given as nested-list, one for each tube
+        output_q = np.asarray(q)
+    else:
+        raise ValueError(f"Given q of {q} is not the correct size.")
+
+    config_lengths = config.get('insertion_max')
+    if isinstance(config_lengths, int):  # given as int
+        lengths = [config_lengths] * tube_num
+        print(f'Each tube length is the same: {config_lengths}.')
+    else:  # given as list
+        lengths = config_lengths
+
+    return Kinematic(tube_num, output_q, output_q_dof, lengths, config.get('delta_x'), strain_bases)

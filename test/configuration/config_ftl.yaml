@@ -25,7 +25,7 @@ rewire_probability: 0.1
 
 # for kinematic model
 q_dof: 2
-num_discrete_points: 51
+delta_x: 1
   # insertion_max: 50 - should match solver
 strain_bases:
   - "pure_helix"  #  - number should match number of tubes ** can also be set by main **

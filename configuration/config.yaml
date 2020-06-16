@@ -17,7 +17,9 @@ optimizer_precision: 0.5
 
 # for rrt solver
 step_bound: 3
-insertion_max: 120
+insertion_max:
+  - 120
+  - 120
 iteration_number: 2000
 single_tube_control: True
 
@@ -25,12 +27,14 @@ single_tube_control: True
 rewire_probability: 0.1
 
 # for kinematic model
-q_dof: 3
-num_discrete_points: 121
+q_dof:
+  - 2
+  - 3
+delta_x: 1
   # insertion_max: 120 - should match solver
 strain_bases:
   - "linear"
-  - "linear"  #  - number should match number of tubes ** can be set by main **
+  - "linear"
 
 # for obstacle weighted goal heuristic
 goal_weight: 3

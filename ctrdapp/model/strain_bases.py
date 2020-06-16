@@ -19,8 +19,6 @@ def constant_strain(x, dof):
     np.ndarray
         base at given x position
     """
-    if dof > 1:
-        print(f'Only 1 degrees of freedom allowed for constant strain.')
     base = np.zeros([6, dof])
     base[1, 0] = 1  # constant y-bending
     return base
@@ -46,8 +44,6 @@ def linear_strain(x, dof):
     np.ndarray
         base at given x position
     """
-    if dof > 3:
-        print(f'Only 3 degrees of freedom are being used out of {dof}.')
     base = np.zeros([6, dof])
     base[1, 0] = 1  # initial y-bending
     if dof > 2:
@@ -76,8 +72,6 @@ def quadratic_strain(x, dof):
     np.ndarray
         base at given x position
     """
-    if dof > 3:
-        print(f'Only 3 degrees of freedom are being used out of {dof}.')
     base = np.zeros([6, dof])
     base[1, 0] = 1  # initial y-bending
     if dof > 2:
@@ -105,8 +99,6 @@ def pure_helix_strain(x, dof):
     np.ndarray
         base at given x position
     """
-    if dof > 2:
-        print(f'Only 2 degrees of freedom are being used out of {dof}.')
     base = np.zeros([6, dof])
     base[1, 0] = sin(x/10)  # y-bending
     base[2, 1] = cos(x/10)  # z-bending
@@ -132,8 +124,6 @@ def linear_helix_strain(x, dof):
     np.ndarray
         base at given x position
     """
-    if dof > 2:
-        print(f'Only 2 degrees of freedom are being used out of {dof}.')
     base = np.zeros([6, dof])
     base[1, 0] = sin(x/10)  # y-bending
     base[2, 1] = x * cos(x/10)  # z-bending
@@ -158,8 +148,6 @@ def torsion_helix_strain(x, dof):
     np.ndarray
         base at given x position
     """
-    if dof > 3:
-        print(f'Only 3 degrees of freedom are being used out of {dof}.')
     base = np.zeros([6, dof])
     base[0, 0] = 1  # torsion
     base[1, 1] = 1  # y-bending
@@ -167,21 +155,29 @@ def torsion_helix_strain(x, dof):
     return base
 
 
-def get_strains(names):
+def get_strains(names, q_dof):
     """Helper function to return strain bases from given names.
 
     Parameters
     ----------
     names : list[str]
+        list of base names
+    q_dof : list[int]
+        degrees of freedom for each tube
 
     Returns
     -------
     list[function]
         list of the desired strain base functions
+
+    Raises
+    ------
+    ValueError
+        If the input q_dof doesn't match the base dof options
     """
     strain_functions = []
-    for n in names:
-        # check_qdof(n, q_dof) todo
+    for n, this_dof in zip(names, q_dof):
+        check_qdof(n, this_dof)
         if n == 'helix':
             strain_functions.append(linear_helix_strain)
         elif n == 'pure_helix':
@@ -217,6 +213,11 @@ def max_from_base(base, q_max, length, q_dof):
     -------
     list[float]
         maximum q's allowed based on given bases and parameters
+
+    Raises
+    ------
+    ValueError
+        If the input q_dof doesn't match the base dof options
     """
     check_qdof(base, q_dof)
     tube_array = []
@@ -262,6 +263,9 @@ def check_qdof(base, q_dof):
             raise ValueError(f'{base} should have 2 or 3 degrees of freedom, not {q_dof}.')
     elif base == 'constant':
         if q_dof != 1:
+            raise ValueError(f'{base} should have 1 degrees of freedom, not {q_dof}.')
+    elif base == 'torsion_helix':
+        if q_dof != 3:
             raise ValueError(f'{base} should have 1 degrees of freedom, not {q_dof}.')
     else:
         print(f'{base} is not a defined strain base.')

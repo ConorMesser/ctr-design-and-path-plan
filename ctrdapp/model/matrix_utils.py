@@ -62,7 +62,7 @@ def little_adjoint(screw_in):
 
     Parameters
     ----------
-    screw_in : np.ndarray
+    screw_in : np.ndarray or list[float]
         The input 6x1 screw
 
     Returns
@@ -90,7 +90,7 @@ def tilde(vector):
 
     Parameters
     ----------
-    vector : np.ndarray
+    vector : np.ndarray or list[float]
         Input 3x1 vector
 
     Returns
@@ -113,7 +113,7 @@ def hat(screw):
 
     Parameters
     ----------
-    screw : np.ndarray
+    screw : np.ndarray or list[float]
         6x1 screw
 
     Returns
@@ -159,7 +159,7 @@ def t_exponential(h, theta, gamma):
         Pitch transformation
     theta : float
         Angle of transformation
-    gamma : np.ndarray
+    gamma : np.ndarray or list[float]
         Input screw
 
     Returns
