@@ -44,7 +44,7 @@ class SquareObstacleAvgPlusWeightedGoal(Heuristic):
         self.goal_weight = goal_weight
         self.goal_dist = goal_dist
 
-    def calculate_cost_from_parent(self, parent: 'SquareObstacleAvgPlusWeightedGoal', reset=False):
+    def calculate_cost_from_parent(self, parent: 'SquareObstacleAvgPlusWeightedGoal', reset=False, init_insertion=False):
         if self.generation != 0 and not reset:
             print(f"Cost already calculated. Do not run method twice.")
             return
@@ -52,6 +52,9 @@ class SquareObstacleAvgPlusWeightedGoal(Heuristic):
                                                     parent.generation,
                                                     self.this_obstacle_min)
         self.generation = parent.generation + 1
+
+        if init_insertion:
+            self.generation = 0
 
     def test_cost_from_parent(self, parent: "SquareObstacleAvgPlusWeightedGoal"):
         store_avg = self.avg_obstacle_min

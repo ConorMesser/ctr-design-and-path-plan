@@ -34,7 +34,7 @@ class Solver(ABC):
         self.model = model
         self.tube_num = configuration.get("tube_number")
         """int : Number of tubes used in this algorithm run"""
-        self.tube_rad = configuration.get("tube_radius")
+        self.tube_rad = configuration.get("tube_radius").get("outer")  # todo
         """List of float : Radii of the tubes"""
         self.heuristic_factory = heuristic_factory
         self.cd = collision_detector
@@ -98,7 +98,7 @@ class Solver(ABC):
         pass
 
     @abstractmethod
-    def visualize_full_search(self, output_dir, tube_num=0, with_solution=True):
+    def visualize_full_search(self, output_dir, tube_num=None, with_solution=True):
         """Visualizes the entire search, including obstacles, goal, and tubes
 
         Parameters
@@ -106,7 +106,8 @@ class Solver(ABC):
         output_dir : Path
             A pathlib PosixPath giving the full path in which to save the output
         tube_num : int, optional
-            Specifies which tube to visualize (default is 0)
+            Specifies which tube to visualize (default is all ->
+             saves a separate file for each tube)
         with_solution : bool
             Should the solution path be plotted?
 

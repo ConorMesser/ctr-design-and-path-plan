@@ -100,25 +100,14 @@ class TestKinematic(unittest.TestCase):
         base1 = [linear_strain]
         base2 = [linear_strain, linear_strain]
 
-        self.no_strain1 = Kinematic(1, no_strain_q1, [2], [1], 0.1,
-                                    base1, strain_bias=strain_bias)
-        self.no_strain1_rough = Kinematic(1, no_strain_q1, [2], [1], 0.5,
-                                          base1, strain_bias=strain_bias)
-        self.no_strain1_fine = Kinematic(1, no_strain_q1, [2], [1], 0.05,
-                                         base1, strain_bias=strain_bias)
-        self.no_strain2 = Kinematic(2, no_strain_q2, [2, 2], [1, 1], 0.1,
-                                    base2, strain_bias=strain_bias)
-        self.constant_strain1 = Kinematic(1, constant_q1, [2],
-                                          [math.pi / 2], math.pi / 20,
-                                          base1, strain_bias=strain_bias)
-        self.constant_strain1_fine = Kinematic(1, constant_q1, [2],
-                                               [math.pi / 2], math.pi / 40,
-                                               base1, strain_bias=strain_bias)
-        self.constant_strain2 = Kinematic(2, constant_q2, [2, 2],
-                                          [math.pi / 2, math.pi / 2], math.pi / 20,
-                                          base2, strain_bias=strain_bias)
-        self.combo = Kinematic(2, no_strain_1_constant_2, [2, 2], [1, 1], 11,
-                               base2, strain_bias=strain_bias)
+        self.no_strain1 = Kinematic(1, no_strain_q1, [2], [1], 0.1, base1)
+        self.no_strain1_rough = Kinematic(1, no_strain_q1, [2], [1], 0.5, base1)
+        self.no_strain1_fine = Kinematic(1, no_strain_q1, [2], [1], 0.05, base1)
+        self.no_strain2 = Kinematic(2, no_strain_q2, [2, 2], [1, 1], 0.1, base2)
+        self.constant_strain1 = Kinematic(1, constant_q1, [2], [math.pi / 2], math.pi / 20, base1)
+        self.constant_strain1_fine = Kinematic(1, constant_q1, [2], [math.pi / 2], math.pi / 40, base1)
+        self.constant_strain2 = Kinematic(2, constant_q2, [2, 2], [math.pi / 2, math.pi / 2], math.pi / 20, base2)
+        self.combo = Kinematic(2, no_strain_1_constant_2, [2, 2], [1, 1], 11, base2)
 
         self.constant_tip = np.array([[0, 0, 1, 1],
                                       [0, 1, 0, 0],
@@ -128,8 +117,8 @@ class TestKinematic(unittest.TestCase):
     def test_solve_g_one_tube_no_strain(self):
 
         # Initial insertion
-        no_strain1_g = self.no_strain1.solve_g()[0]
-        no_strain1_g_disc = self.no_strain1_fine.solve_g()[0]
+        no_strain1_g = self.no_strain1.solve_g(full=True)[0]
+        no_strain1_g_disc = self.no_strain1_fine.solve_g(full=True)[0]
         eye_end = np.eye(4)
         eye_end[0, 3] = -1
 
@@ -139,8 +128,8 @@ class TestKinematic(unittest.TestCase):
             np.testing.assert_almost_equal(no_strain1_g[i], no_strain1_g_disc[i*2])
 
         # Half insertion
-        no_strain1_g = self.no_strain1.solve_g(indices=[5])[0]
-        no_strain1_g_disc = self.no_strain1_fine.solve_g(indices=[10])[0]
+        no_strain1_g = self.no_strain1.solve_g(indices=[5], full=True)[0]
+        no_strain1_g_disc = self.no_strain1_fine.solve_g(indices=[10], full=True)[0]
         eye_end[0, 3] = -0.5
 
         np.testing.assert_equal(no_strain1_g[5], np.eye(4))
@@ -149,8 +138,8 @@ class TestKinematic(unittest.TestCase):
             np.testing.assert_almost_equal(no_strain1_g[i], no_strain1_g_disc[i * 2])
 
         # Full insertion
-        no_strain1_g = self.no_strain1.solve_g(indices=[0])[0]
-        no_strain1_g_disc = self.no_strain1_fine.solve_g(indices=[0])[0]
+        no_strain1_g = self.no_strain1.solve_g(indices=[0], full=True)[0]
+        no_strain1_g_disc = self.no_strain1_fine.solve_g(indices=[0], full=True)[0]
         eye_end[0, 3] = 1
 
         np.testing.assert_equal(no_strain1_g[0], np.eye(4))
@@ -159,8 +148,8 @@ class TestKinematic(unittest.TestCase):
             np.testing.assert_almost_equal(no_strain1_g[i], no_strain1_g_disc[i * 2])
 
         # Theta tests
-        no_strain1_g_rot_2pi = self.no_strain1.solve_g(indices=[0], thetas=[2*math.pi])[0]
-        no_strain1_g_rot_halfpi = self.no_strain1.solve_g(thetas=[math.pi/2])[0]
+        no_strain1_g_rot_2pi = self.no_strain1.solve_g(indices=[0], thetas=[2*math.pi], full=True)[0]
+        no_strain1_g_rot_halfpi = self.no_strain1.solve_g(thetas=[math.pi/2], full=True)[0]
         eye_90 = np.eye(4)
         eye_90[1:3, 1:3] = [[0, -1], [1, 0]]
 
@@ -170,8 +159,8 @@ class TestKinematic(unittest.TestCase):
             np.testing.assert_almost_equal(no_strain1_g[i], no_strain1_g_rot_2pi[i])
 
     def test_solve_g_one_tube_constant_strain(self):
-        constant_strain1_g = self.constant_strain1.solve_g(indices=[0])[0]
-        constant_strain1_g_fine = self.constant_strain1_fine.solve_g(indices=[0])[0]
+        constant_strain1_g = self.constant_strain1.solve_g(indices=[0], full=True)[0]
+        constant_strain1_g_fine = self.constant_strain1_fine.solve_g(indices=[0], full=True)[0]
 
         np.testing.assert_equal(constant_strain1_g[0], np.eye(4))
         np.testing.assert_almost_equal(constant_strain1_g[-1], self.constant_tip)
@@ -179,14 +168,14 @@ class TestKinematic(unittest.TestCase):
             np.testing.assert_almost_equal(constant_strain1_g[i], constant_strain1_g_fine[i * 2])
 
     def test_solve_g_two_tubes_nostrain(self):
-        no_strain2_g = self.no_strain2.solve_g()
-        g_first_extended = self.no_strain2.solve_g(indices=[0, 10])
+        no_strain2_g = self.no_strain2.solve_g(full=True)
+        g_first_extended = self.no_strain2.solve_g(indices=[0, 10], full=True)
 
         for i in range(11):
             np.testing.assert_equal(no_strain2_g[0][i], no_strain2_g[1][i])
             np.testing.assert_almost_equal(g_first_extended[0][i], g_first_extended[1][i])
 
-        no_strain2_g = self.no_strain2.solve_g(indices=[0, 0])
+        no_strain2_g = self.no_strain2.solve_g(indices=[0, 0], full=True)
         np.testing.assert_equal(no_strain2_g[0][0], np.eye(4))
         np.testing.assert_equal(no_strain2_g[0][-1], no_strain2_g[1][0])
 
@@ -195,8 +184,8 @@ class TestKinematic(unittest.TestCase):
         np.testing.assert_almost_equal(no_strain2_g[1][-1], end_g)
 
     def test_solve_g_two_tubes_constant(self):
-        this_g = self.constant_strain2.solve_g(indices=[0, 0])
-        turn_g = self.constant_strain2.solve_g(indices=[0, 0], thetas=[0, math.pi/2])
+        this_g = self.constant_strain2.solve_g(indices=[0, 0], full=True)
+        turn_g = self.constant_strain2.solve_g(indices=[0, 0], thetas=[0, math.pi/2], full=True)
 
         np.testing.assert_equal(this_g[0][0], np.eye(4))
         np.testing.assert_almost_equal(this_g[0][-1], self.constant_tip)
@@ -295,7 +284,7 @@ class TestKinematic(unittest.TestCase):
         np.testing.assert_equal(ftl_heuristic, [[0]])
 
         # Don't allow extension past max tube length
-        this_g = self.no_strain1_rough.solve_g([2], [0])
+        this_g = self.no_strain1_rough.solve_g([2], [0], full=True)
         g_test_forward, eta_test, insert_indices, true_insertions, ftl_heuristic = \
             self.no_strain1_rough.solve_integrate([0], [0.1], [0], [1.101], insert_full, invert_insert=True)
         np.testing.assert_equal(g_test_forward, insert_full)
@@ -307,7 +296,7 @@ class TestKinematic(unittest.TestCase):
     def test_solve_once_speed(self):
         # zero insertion
         iter_num = 5000
-        this_g = self.no_strain1_rough.solve_g([2], [0])
+        this_g = self.no_strain1_rough.solve_g([2], [0], full=True)
         time = timeit.Timer(lambda: self.no_strain1_rough.solve_integrate(
             [0], [-0.501], [1], [0.499], this_g, invert_insert=False)).timeit(iter_num)
         self.assertLess(time/iter_num, 0.0004)
@@ -315,7 +304,7 @@ class TestKinematic(unittest.TestCase):
     def test_solve_g_speed(self):
         iter_num = 500
         time_full = timeit.Timer(lambda: self.constant_strain2.solve_g(
-            indices=[0, 0], thetas=[0, math.pi/2])).timeit(iter_num)
+            indices=[0, 0], thetas=[0, math.pi/2], full=True)).timeit(iter_num)
         self.assertLess(time_full/iter_num, 0.005)
 
         time_part = timeit.Timer(lambda: self.constant_strain2.solve_g(
@@ -323,7 +312,7 @@ class TestKinematic(unittest.TestCase):
         self.assertAlmostEqual(time_part/iter_num, time_full/iter_num, 3)
 
         time_full_no_extension = timeit.Timer(lambda: self.constant_strain2.solve_g(
-            thetas=[0, math.pi/2])).timeit(iter_num)
+            thetas=[0, math.pi/2], full=True)).timeit(iter_num)
         time_part_no_extension = timeit.Timer(lambda: self.constant_strain2.solve_g(
             thetas=[0, math.pi / 2], full=False)).timeit(iter_num)
         self.assertLess(time_part_no_extension, time_full_no_extension)
@@ -333,7 +322,7 @@ class TestKinematic(unittest.TestCase):
         strain_bias = np.array([0, 0, 0, 1, 0, 0])
         strain_base = [constant_strain]
 
-        model = Kinematic(1, [np.array([0.05])], [1], [50], 0.5, strain_base, strain_bias=strain_bias)
+        model = Kinematic(1, [np.array([0.05])], [1], [50], 0.5, strain_base)
         prev_g_out = model.solve_g([38], [0], full=False)
 
         _, ftl_out = model.solve_eta([-2], [38], [0], prev_g_out)
@@ -347,7 +336,7 @@ class TestKinematic(unittest.TestCase):
         strain_bias = np.array([0, 0, 0, 1, 0, 0])
         strain_base = [constant_strain, constant_strain]
 
-        model = Kinematic(2, [np.array([0.05]), np.array([0.03])], [1, 1], [50, 50], 0.5, strain_base, strain_bias=strain_bias)
+        model = Kinematic(2, [np.array([0.05]), np.array([0.03])], [1, 1], [50, 50], 0.5, strain_base)
         prev_g_out = model.solve_g([76, 78], [0, 0], full=False)
 
         _, ftl_out = model.solve_eta([-2, -1], [76, 78], [0, 0], prev_g_out)

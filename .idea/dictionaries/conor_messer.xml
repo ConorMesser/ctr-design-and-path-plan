@@ -1,9 +1,14 @@
 <component name="ProjectDictionaryState">
   <dictionary name="conor-messer">
     <words>
+      <w>coadj</w>
       <w>ctrdapp</w>
       <w>discretization</w>
       <w>discretize</w>
+      <w>intc</w>
+      <w>intg</w>
+      <w>kdtree</w>
+      <w>mpnn</w>
       <w>ndarray</w>
       <w>pathlib</w>
       <w>quat</w>

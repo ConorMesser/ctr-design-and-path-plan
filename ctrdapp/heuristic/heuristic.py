@@ -7,7 +7,7 @@ class Heuristic(ABC):
     """Abstract heuristic class; no abstract parameters."""
 
     @abstractmethod
-    def calculate_cost_from_parent(self, parent, reset=False):
+    def calculate_cost_from_parent(self, parent, reset=False, init_insertion=False):
         """Calculates cost with the given heuristic as the parent.
 
         Calculates the cost with the given parent heuristic but does not
@@ -22,6 +22,10 @@ class Heuristic(ABC):
             The heuristic of the parent node to this child node
         reset : bool
             Has this method been called before on this instance?
+        init_insertion : bool
+            Is this child node at an initial insertion state for all tubes?
+            This designates a reset of the generations for it is possible
+            to reach this node with pure rotation.
 
         Returns
         -------

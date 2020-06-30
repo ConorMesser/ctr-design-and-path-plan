@@ -35,7 +35,7 @@ def main():
                                                  dictionaries.get("heuristic"))
 
     # initial guess  todo
-    initial_guess = [0.01] * (configuration.get('tube_number') * configuration.get('q_dof'))
+    initial_guess = [0.01] * (configuration.get('tube_number') * sum(configuration.get('q_dof')))
 
     optimizer = create_optimizer(heuristic_factory, collision_detector,
                                  np.asarray(initial_guess), configuration)
@@ -46,10 +46,14 @@ def main():
     # (especially for rrt* or other optimizing ones) todo
 
     optimize_result.save_result(output_path)
+    this_solver = optimize_result.best_solver
 
     # interactive?? todo
-    optimize_result.best_solver.visualize_best_solution(objects_file, output_path)
-    optimize_result.best_solver.visualize_best_solution_path(objects_file, output_path)
+    this_solver.visualize_full_search(output_path, with_solution=True)
+    this_solver.save_tree(output_path)
+    this_solver.save_best_solution(output_path)
+    this_solver.visualize_best_solution(objects_file, output_path)
+    this_solver.visualize_best_solution_path(objects_file, output_path)
 
 
 if __name__ == "__main__":

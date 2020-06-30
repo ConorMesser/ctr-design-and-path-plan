@@ -136,8 +136,8 @@ def get_single_tube_value(tube_control_params, insert_neighbor, rotation_neighbo
         new_params = []
         for i in range(tube_num):
             if i == this_insertion_tube_num:
-                new_params.append(tube_control_params[2*i-1])
                 new_params.append(tube_control_params[2*i])
+                new_params.append(tube_control_params[2*i+1])
             else:
                 new_params.append(insert_neighbor[i])
                 new_params.append(rotation_neighbor[i])

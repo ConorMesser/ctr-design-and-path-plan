@@ -27,9 +27,9 @@ class DynamicTree:
         max_tree_size :
         dim : int
             number of dimensions represented in the node data
-        ins : list of float
+        ins : list[float]
             initial insertion values
-        rot : list of float
+        rot : list[float]
             initial rotation values
         init_heuristic : Heuristic
             Cost function and information for this node
@@ -88,14 +88,14 @@ class DynamicTree:
 
         Parameters
         ----------
-        x: list of float
+        x: list[float]
             given point
         max_distance: float
             maximum distance from x allowed
 
         Returns
         -------
-        list of int
+        list[int]
             the indices of the nearest neighbors (as stored in nodes array)
         """
 
@@ -124,25 +124,25 @@ class DynamicTree:
 
         Parameters
         ----------
-        ins : list of float
+        ins : list[float]
             The insertion values for the point to be added to the tree
-        rot : list of float
+        rot : list[float]
             The rotation values for the point to be added to the tree
         parent : int
             The index of the parent node for this new node
         heuristic : Heuristic
             The cost structure and information for this new node
-        g_curves : list of list of 4x4 array
-            SE3 arrays for this node where g_curves[tube #][index] = 4x4 SE3
-        insert_indices : list of int
+        g_curves : list[list[np.ndarray]]
+            4x4 SE3 arrays for this node where g_curves[tube #][index] = 4x4 SE3
+        insert_indices : list[int]
             corresponds to index for "origin" SE3 array for each g_curve tube
 
         Returns
         -------
         VOID
         """
-
-        heuristic.calculate_cost_from_parent(self.nodes[parent].heuristic)
+        init_insertion = set(ins) == {0.0}
+        heuristic.calculate_cost_from_parent(self.nodes[parent].heuristic, init_insertion=init_insertion)
         new_node = Node(ins, rot, self.tube_num, heuristic, g_curves, insert_indices, parent)
         self.nodes.append(new_node)
         this_node_index = len(self.nodes) - 1
@@ -165,26 +165,15 @@ class DynamicTree:
         else:
             return self.no_cycle(ancestor, child_ind)
 
-    # def reset_heuristic_all_children(self, ind):
-    #     children = []
-    #     temp = []
-    #     temp.extend(self.nodes[ind].children)
-    #
-    #     while temp:  # while temp is not empty
-    #         child = temp.pop()
-    #         children.append(child)
-    #         temp.extend(self.nodes[child].children)
-    #
-    #     for ch in children:
-    #         self_node = self.nodes[ch]
-    #         parent_heuristic = self.nodes[self_node.parent].heuristic
-    #         self_node.heuristic.calculate_cost_from_parent(parent_heuristic, reset=True)
-
     def reset_heuristic_all_children(self, ind):
         parent_heuristic = self.nodes[ind].heuristic
         children = self.nodes[ind].children
         for ch in children:
-            self.nodes[ch].heuristic.calculate_cost_from_parent(parent_heuristic, reset=True)
+            ins = self.nodes[ch].insertion
+            init_insertion = set(ins) == {0.0}
+
+            self.nodes[ch].heuristic.calculate_cost_from_parent(parent_heuristic, reset=True,
+                                                                init_insertion=init_insertion)
             self.reset_heuristic_all_children(ch)
 
     def swap_parents(self, current_ind, new_parent_ind, new_heuristic):
@@ -194,7 +183,12 @@ class DynamicTree:
         self.nodes[previous_parent].children.remove(current_ind)
         self.nodes[current_ind].parent = new_parent_ind
         self.nodes[new_parent_ind].children.append(current_ind)
-        new_heuristic.calculate_cost_from_parent(new_parent_heuristic, reset=True)
+
+        ins = self.nodes[current_ind].insertion
+        init_insertion = set(ins) == {0.0}
+
+        new_heuristic.calculate_cost_from_parent(new_parent_heuristic, reset=True,
+                                                 init_insertion=init_insertion)
         self.reset_heuristic_all_children(current_ind)
 
     def get_costs(self, child_ind):
@@ -302,9 +296,9 @@ class Node:
         """
         Parameters
         ----------
-        insertion : list of float
+        insertion : list[float]
             insertion values
-        rotation: list of float
+        rotation: list[float]
             rotation values
         dim : int
             number of dimensions tree has for error checking

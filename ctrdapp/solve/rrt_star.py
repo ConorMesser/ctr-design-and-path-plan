@@ -26,7 +26,7 @@ class RRTStar(RRT):
                 self.tree.at_goal.append(new_index)
                 self.found_solution = True
                 goal_dist = 0
-            insert_fractions = [1 - (float(i) / self.insert_max) for i in true_insertion]  # inverse insertion
+            insert_fractions = [1 - (float(i) / ins_max) for i, ins_max in zip(true_insertion, self.insert_max)]  # inverse insertion
             insert_frac = sum(insert_fractions)  # = 0 if all tubes are fully inserted; = tube_num if fully retracted
 
             # point inserted into tree must be in format [insertion, rotation, insertion, rotation, ...]

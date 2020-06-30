@@ -3,7 +3,7 @@ import numpy as np
 import time
 
 from .optimizer import Optimizer
-from ..model.kinematic import create_model
+from ..model.model_factory import create_model
 from ..solve.solver_factory import create_solver
 from ctrdapp.model.strain_bases import max_from_base
 from .optimize_result import OptimizeResult
@@ -15,15 +15,17 @@ class NelderMead(Optimizer):
         super().__init__(heuristic_factory, collision_checker, initial_guess, configuration)
 
         self.solver_results = []
-        self.best_solver = {'cost': 100000000, 'solver': None}
+        self.best_solver = {'cost': 10e9, 'solver': None}
         self.costs = []
+        self.count = 0
 
     def find_min(self):
         func = self.solver_heuristic
 
         init_simplex = calculate_simplex(self.configuration.get('strain_bases'),
-                                         self.configuration.get('tube_radius'),
-                                         self.configuration.get('insertion_max'),
+                                         # self.configuration.get('tube_radius').get('outer'),
+                                         [0.9],  # todo change back
+                                         self.configuration.get('tube_lengths'),
                                          self.configuration.get('q_dof'))
         print(init_simplex)
         # alter_simplex = input("Would you like to alter the simplex? (yes/no): ")
@@ -62,7 +64,8 @@ class NelderMead(Optimizer):
         # model from x
         this_model = create_model(self.configuration, x)
 
-        this_model.solve_g()
+        # this_model.solve_g() todo why is this here???
+
         # model, heuristic_factory, collision_detector, configuration
         this_solver = create_solver(this_model, self.heuristic_factory, self.collision_checker, self.configuration)
 
@@ -74,6 +77,9 @@ class NelderMead(Optimizer):
 
         if cost < self.best_solver.get('cost'):
             self.best_solver = {'cost': cost, 'solver': this_solver}
+
+        self.count += 1
+        print(self.count)
 
         return cost
 
@@ -92,11 +98,11 @@ class NelderMead(Optimizer):
 # must remain in the elastic/plastic region given by the Emax)
 # The constant and changing q parameters must be considered to limit the
 # max q possible
-def calculate_simplex(base_names, tube_radii, length, q_dof, e_max=0.05):
+def calculate_simplex(base_names, tube_radii, length, q_dof, e_max=0.05):  # base off of initial guess?? todo
 
     max_init_array = []
-    for base, tube_rad in zip(base_names, tube_radii):
-        tube_arr = max_from_base(base, e_max / tube_rad, length, q_dof)
+    for i in range(len(tube_radii)):
+        tube_arr = max_from_base(base_names[i], e_max / tube_radii[i], length[i], q_dof[i])
         max_init_array.extend(tube_arr)
     dim = len(max_init_array)
     init_simplex = [[q / 2 for q in max_init_array]]

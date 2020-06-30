@@ -37,12 +37,15 @@ class FollowTheLeader(Heuristic):
         self.avg_ftl = self.ftl_magnitude
         self.generation = 0
 
-    def calculate_cost_from_parent(self, parent: "FollowTheLeader", reset=False):
+    def calculate_cost_from_parent(self, parent: "FollowTheLeader", reset=False, init_insertion=False):
         if self.generation != 0 and not reset:
             print(f"Cost already calculated. Do not run method twice.")
             return
         self.avg_ftl = self._calculate_avg(parent.avg_ftl, parent.generation, self.ftl_magnitude)
         self.generation = parent.generation + 1
+
+        if init_insertion:
+            self.generation = 0
 
     def test_cost_from_parent(self, parent: "FollowTheLeader"):
         return self._calculate_avg(parent.avg_ftl, parent.generation, self.ftl_magnitude)

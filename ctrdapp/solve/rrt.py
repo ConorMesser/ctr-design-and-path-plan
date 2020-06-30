@@ -38,9 +38,9 @@ class RRT(Solver):
         """int : number of iterations"""
         self.step_bound = configuration.get("step_bound")
         """float : maximum step size (from nearest neighbor) for new config"""
-        self.rotation_max = 0.35  # 0.1745  # 10 degrees in either direction todo make this variable based on insertion?
+        self.rotation_max = 0.8  # 0.1745  # 10 degrees in either direction todo make this variable based on insertion?
         """float : maximum rotation from nearest neighbor, in Radians"""
-        self.insert_max = configuration.get("insertion_max")
+        self.insert_max = configuration.get("tube_lengths")
         """float : maximum tube/insertion length"""
         self.found_solution = False  # todo is this necessary?
         """boolean : has any Node collided with the goal?"""
@@ -57,8 +57,9 @@ class RRT(Solver):
                                                        insertion_fraction=self.tube_num)
         init_tube = [np.eye(4)]
         init_g_curves = [init_tube] * self.tube_num
-        scaling = [1, self.step_bound / self.rotation_max]
 
+        # very important for accurate nearest neighbor search
+        scaling = [1, self.step_bound / self.rotation_max]
         self.tree = DynamicTree(self.tube_num, [0] * self.tube_num, [0] * self.tube_num, init_heuristic, init_g_curves,
                                 self.iter_max, scaling)
         """DynamicTree : stores the tree information"""
@@ -113,7 +114,7 @@ class RRT(Solver):
                 self.tree.at_goal.append(new_index)
                 self.found_solution = True
                 goal_dist = 0
-            insert_fractions = [1 - (float(i) / self.insert_max) for i in true_insertion]  # inverse insertion
+            insert_fractions = [1 - (float(i) / ins_max) for i, ins_max in zip(true_insertion, self.insert_max)]  # inverse insertion
             insert_frac = sum(insert_fractions)  # = 0 if all tubes are fully inserted; = tube_num if fully retracted
             new_heuristic = self.heuristic_factory.create(min_obstacle_distance=obs_min,
                                                           goal_distance=goal_dist,
@@ -125,8 +126,8 @@ class RRT(Solver):
     def calc_new_random_config(self):
         # choose random config limited by the max insertion distance
         tube_control_params = []
-        for _ in range(self.tube_num):
-            tube_control_params.append(random() * self.insert_max)
+        for i in range(self.tube_num):
+            tube_control_params.append(random() * self.insert_max[i])
             tube_control_params.append(random() * 2 * pi)
 
         insert_neighbor, rotation_neighbor, neighbor_index, neighbor_parent = self.tree.nearest_neighbor(tube_control_params)
@@ -174,6 +175,7 @@ class RRT(Solver):
         solution_file = open(filename, "w")
         # with filename.open('w') as solution_file:
 
+        solution_file.write(f"Q: {self.model.q}\n")
         cost, best_index = self.get_best_cost()
         solution_file.write(f"Cost: {cost}\n")
         solution_list = self.tree.get_index_list(best_index)
@@ -207,32 +209,38 @@ class RRT(Solver):
             g_out_flat_list.append(curve)
         visualize_curve(g_out_flat_list, objects_file, self.tube_num, self.tube_rad, output_dir, filename)
 
-    def visualize_full_search(self, output_dir, tube_num=0, with_solution=True):
+    def visualize_full_search(self, output_dir, tube_num=None, with_solution=True):
+        if tube_num is None:  # default -> all tubes desired
+            start = 0
+            end = self.tube_num
+        else:  # tube_num is specified (single tube desired)
+            start = tube_num
+            end = tube_num + 1
+        for num in range(start, end):
+            from_list = []
+            to_list = []
+            node_list = []
+            cost_list = []
+            # start at root of tree
+            root_node = self.tree.nodes[0]
+            root_data = [root_node.insertion[num], root_node.rotation[num]]
+            # collect from and to information, recur over children
+            for i in root_node.children:
+                child_from_l, child_to_l, children_nodes, children_costs = self._tree_search_recur(
+                    i, root_data, num)
+                from_list = from_list + child_from_l
+                to_list = to_list + child_to_l
+                node_list = node_list + children_nodes
+                cost_list = cost_list + children_costs
 
-        from_list = []
-        to_list = []
-        node_list = []
-        cost_list = []
-        # start at root of tree
-        root_node = self.tree.nodes[0]
-        root_data = [root_node.insertion[tube_num], root_node.rotation[tube_num]]
-        # collect from and to information, recur over children
-        for i in root_node.children:
-            child_from_l, child_to_l, children_nodes, children_costs = self._tree_search_recur(
-                i, root_data, tube_num)
-            from_list = from_list + child_from_l
-            to_list = to_list + child_to_l
-            node_list = node_list + children_nodes
-            cost_list = cost_list + children_costs
+            if with_solution:
+                _, best_index = self.get_best_cost()
+                solution_list = self.tree.get_index_list(best_index)
+            else:
+                solution_list = []
 
-        if with_solution:
-            _, best_index = self.get_best_cost()
-            solution_list = self.tree.get_index_list(best_index)
-        else:
-            solution_list = []
-
-        visualize_tree(from_list, to_list, node_list, output_dir, "full_tree",
-                       solution_list, self.tree.at_goal, cost_list)
+            visualize_tree(from_list, to_list, node_list, output_dir, f"tree_tube{num}",
+                           solution_list, self.tree.at_goal, cost_list)
 
     def _tree_search_recur(self, child_index, parent_data, tube_num):
 
@@ -241,7 +249,7 @@ class RRT(Solver):
         child_data = [this_child.insertion[tube_num], this_child.rotation[tube_num]]
         to_list = [child_data]
         node_list = [child_index]
-        cost_list = [this_child.heuristic.get_own_cost()]  # [this_child.heuristic.get_cost()]
+        cost_list = [this_child.heuristic.get_cost()]
 
         if not this_child.children:
             return from_list, to_list, node_list, cost_list

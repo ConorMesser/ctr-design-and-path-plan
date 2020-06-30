@@ -8,16 +8,16 @@ tube_number: 1
 tube_radius:
 - 5
 collision_objects_filename: "init_objects_ftl_goal.json"
-run_identifier: "TEST_Helix_5000_star_normal_neighbor"
+run_identifier: "SUCCESS_Linear_4000_resetCost"
 
 # for nelder mead
 optimize_iterations: 1
 optimizer_precision: 0.00001
 
 # for rrt solver
-step_bound: 3
+step_bound: 7.5
 insertion_max: 50
-iteration_number: 5000
+iteration_number: 4000
 single_tube_control: False
 
 # for rrt_star solver (in addition to rrt)
@@ -25,10 +25,10 @@ rewire_probability: 0.1
 
 # for kinematic model
 q_dof: 2
-delta_x: 1
+delta_x: 2.5
   # insertion_max: 50 - should match solver
 strain_bases:
-  - "pure_helix"  #  - number should match number of tubes ** can also be set by main **
+  - "linear"  #  - number should match number of tubes ** can also be set by main **
 
 # for obstacle weighted goal heuristic
 goal_weight: 3

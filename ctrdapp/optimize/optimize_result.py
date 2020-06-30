@@ -53,7 +53,8 @@ class OptimizeResult:
         filename = output_dir / "optimize_result.txt"
         optimize_result = open(filename, "w")
 
-        optimize_result.write(f"Success: {self.success}\n")
+        optimize_result.write(f"Optimizer Success: {self.success}\n")
+        optimize_result.write(f"Goal Reached: {self.best_solver.found_solution}\n")
         optimize_result.write(f"Completion Time: {self.completion_time}\n")
         optimize_result.write(f"Number of Iterations: {self.num_iterations}\n")
         optimize_result.write(f"Number of Function Evals: {self.num_function_eval}\n")

@@ -25,7 +25,7 @@ class VisualizeUtilsTest(unittest.TestCase):
         this_model = create_model(config=configuration, q=[[0.01, 0.0005], [0.02, 0.0007]])
 
         # need to visualize
-        g_out = this_model.solve_g(indices=[0, 0])
+        g_out = this_model.solve_g(indices=[0, 0], full=True)
 
         visualize_curve_single(g_out, objects_file, configuration.get("tube_number"), configuration.get("tube_radius"),
                                output_path, filename)
@@ -35,7 +35,7 @@ class VisualizeUtilsTest(unittest.TestCase):
         sys.setrecursionlimit(10**4)
 
         path = pathlib.Path().absolute()
-        file = path / "configuration" / "config_ftl.yaml"
+        file = path / "configuration" / "config_trial.yaml"
         configuration, dictionaries = parse_config(file)
 
         run_name = configuration.get("run_identifier")
@@ -50,7 +50,7 @@ class VisualizeUtilsTest(unittest.TestCase):
             output_path.mkdir(parents=True)
 
         objects_file = path / "configuration" / configuration.get("collision_objects_filename")
-        this_model = create_model(config=configuration, q=[[0.05, 0.05]])
+        this_model = create_model(config=configuration, q=[0.02777777777777778, 1.1111111111111112e-05])
 
         # heuristic factory
         heuristic_factory = create_heuristic_factory(configuration,
@@ -69,10 +69,10 @@ class VisualizeUtilsTest(unittest.TestCase):
         this_solver.visualize_full_search(output_path, with_solution=True)
         this_solver.save_tree(output_path)
         this_solver.save_best_solution(output_path)
+        this_solver.visualize_best_solution(objects_file, output_path)
         this_solver.visualize_best_solution_path(objects_file, output_path)
 
         x = 5
-
 
     def test_visualize_solve_once(self):
         # create model
@@ -84,7 +84,7 @@ class VisualizeUtilsTest(unittest.TestCase):
 
         # get g previous (using solve_g)
         insert_indices = [100, 100]
-        prev_g = this_model.solve_g(indices=insert_indices)
+        prev_g = this_model.solve_g(indices=insert_indices, full=True)
 
         # try small step size + visualize
         delta_theta_s = [0.2, 0.5]
