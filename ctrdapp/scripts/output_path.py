@@ -31,27 +31,26 @@ def main():  # todo make a main script to get general config, set things up
                                                  dictionaries.get("heuristic"))
 
     # create model
-    q = [0.05, 0.05]  # [pi/100]  # max q for radius 0.9 tube is 0.0555
+    q = [0.03, 0.002]  # [pi/100]  # max q for radius 0.9 tube is 0.0555
     this_model = create_model(configuration, q)
 
-    all_curves = [this_model.solve_g(indices=[1], thetas=[0.1], full=False)]
+    all_curves = [this_model.solve_g(indices=[50], thetas=[0], full=False)]
 
-    # for i in range(1, 50):
+    for i in range(1, 50):
+        g_out, eta_out, new_insert_indices, true_insertions, ftl_out = \
+            this_model.solve_integrate([0], [1], [0], [i], all_curves[i-1])
+
     # g_out, eta_out, new_insert_indices, true_insertions, ftl_out = \
-    #     this_model.solve_integrate([pi/2], [1], [pi/2], [50], all_curves[0])
-
-    g_out, eta_out, new_insert_indices, true_insertions, ftl_out = \
-        this_model.solve_integrate([-0.1], [1], [0], [50], all_curves[0])
+    #     this_model.solve_integrate([-0.1], [1], [0], [50], all_curves[0])
 
     # g_out, eta_out, new_insert_indices, true_insertions, ftl_out = \
     #     this_model.solve_integrate([0], [1], [0], [50], all_curves[0])
-    all_curves.append(g_out)
+        all_curves.append(g_out)
 
-    heuristic = heuristic_factory.create(follow_the_leader=ftl_out)
-
+        heuristic = heuristic_factory.create(follow_the_leader=ftl_out)
 
     visualize_curve(all_curves, objects_file, configuration.get("tube_number"), configuration.get("tube_radius"),
-                    output_path, "FTL_helix_insertion_animated")
+                    output_path, "FTL_linear_insertion_animated")
 
 
 if __name__ == "__main__":

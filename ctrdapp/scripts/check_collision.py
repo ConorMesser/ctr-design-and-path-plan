@@ -4,7 +4,7 @@ import numpy as np
 from ctrdapp.collision.collision_checker import CollisionChecker
 from ctrdapp.solve.visualize_utils import visualize_curve_single
 
-
+# todo deprecated
 def main():
 
     path = pathlib.Path().absolute()
