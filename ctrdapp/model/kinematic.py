@@ -4,11 +4,11 @@ import numpy as np
 from math import ceil, floor
 import pathlib
 
-from .matrix_utils import big_adjoint, hat, exponential_map, t_exponential
-from .strain_bases import get_strains
+from .model import Model
+from .matrix_utils import big_adjoint, hat, exponential_map
 
 
-class Kinematic:
+class Kinematic(Model):
     """The kinematic strain-based model.
 
     Stores the configuration data for a model, and
@@ -30,76 +30,28 @@ class Kinematic:
         number of discrete points along each tube
     strain_base : list[function]
         function defining each tube's strain base
-    strain_bias : np.ndarray
-        bias strain for tube structure, x-elongation is default
 
     Attributes
     ----------
-    tube_num : int
-        number of tubes
     q : np.ndarray[list[float]] or list[np.ndarray[float]]
         bending parameters for each tube
         (will be multiplied by the strain bases)
     q_dof : list[int]
         number of degrees of freedom for each tube
-    max_tube_length : list[float]
-        maximum tube length for each tube
-    num_discrete_points : [int]
-        number of discrete points along each tube,
-        based on delta_x and max_tube_length
     strain_base : list[function]
         function defining each tube's strain base
     strain_bias : np.ndarray
         bias strain for tube structure, x-elongation is default
-    delta_x : float
-        size of this discretization
     """
-    def __init__(self, tube_num, q, q_dof, max_tube_length, delta_x, strain_base,
-                 strain_bias=np.array([0, 0, 0, 1, 0, 0])):
-        self.tube_num = tube_num
-        self.max_tube_length = max_tube_length
-        self.delta_x = delta_x
+    def __init__(self, tube_num, q, q_dof, max_tube_length, delta_x, strain_base):
+        super().__init__(tube_num, max_tube_length, delta_x)
         self.strain_base = strain_base
-        self.strain_bias = strain_bias
+        self.strain_bias = np.array([0, 0, 0, 1, 0, 0])
         self.q_dof = q_dof
         self.q = q
-        self.num_discrete_points = [round(length / delta_x) + 1 for
-                                    length in max_tube_length]
 
     def solve_integrate(self, delta_theta, delta_insertion, this_theta,
                         this_insertion, prev_g, invert_insert=True):
-        """Calculate the g and eta for one step in space.
-
-        Parameters
-        ----------
-        delta_theta : list[float]
-            change in theta values for each tube
-        delta_insertion : list[float]
-            change in insertion values for each tube
-        this_theta : list[float]
-            rotation values for each tube
-        this_insertion : list[float]
-            insertion values for each tube
-        prev_g : list[list[np.ndarray]]
-            4x4 SE3 g values for each tube from s to L of the previous insertion
-        invert_insert : bool
-            True if insertion values are given intuitively (with s(0) = 0 and
-            s(L) = L; false otherwise (default is True))
-
-        Returns
-        -------
-        (list[list[np.ndarray]], list[list[np.ndarray]], list[int], list[float], list[np.ndarray])
-            --updated SE3 g values for each tube from s to L,
-            where g_out[tube_num][index] = [4x4 SE3 array]
-            --eta value for each tube, where
-            eta_out[tube_num][0] = eta -> (eta stored in list for consistency)..
-            --insertion indices for each tube, where
-            insert_indices[tube_num] = int
-            --true insertion values (rounded based on discretization),
-            where true_insertions[tube_num] = float
-            --follow-the-leader array (g_dot minus g_prime) for each tube from s to L,
-            where ftl_out[tube_num] = [6x1 array]
-        """
 
         # kinematic model is defined as s(0)=L no insertion and s=0 for full insertion
         if invert_insert:
@@ -124,31 +76,9 @@ class Kinematic:
         return g_out, eta_out, new_insert_indices, true_insertions, ftl_out
 
     def solve_g(self, indices=None, thetas=None, full=True):
-        """Calculates the g of each point for each tube at given index and theta
-
-        At default, the tips of each tube will be aligned with the origin, with
-        no rotation or insertion. If indices are given, the given index of each
-        tube will be aligned with the tip of the previous tube with theta
-        rotation along x-axis wrt previous tube.
-
-        Parameters
-        ---------
-        indices : list[int]
-            Insertion index for each tube, with initial as default (no insertion)
-        thetas : list[float]
-            Theta for each tube, with initial (0) as default
-        full : boolean
-            Is the full tube needed (default) or just the segment past the insertion index?
-
-        Returns
-        -------
-        list[list[np.ndarray]]
-            g values for each tube,
-            where g_out[tube number] = [4x4 SE3 array]
-        """
 
         if indices is None:  # default to zero insertion, with s(0) = L
-            indices = [disc - 1 for disc in self.num_discrete_points] * self.tube_num
+            indices = [disc - 1 for disc in self.num_discrete_points]
         if thetas is None:
             thetas = [0] * self.tube_num
 
@@ -287,6 +217,7 @@ def calculate_indices(prev_insertions, next_insertions, max_tube_lengths, delta_
         --the final index values for the previous insertion
         --the final index values for the next insertion
     """
+    # todo ensure can't go past origin with multiple tubes
     prev_insert_indices = []
     new_insert_indices = []
     for n in range(len(prev_insertions)):
@@ -354,51 +285,3 @@ def save_g_positions(this_g, filename):
             f.write(f"{g[0, 3]}, {g[1, 3]}, {g[2, 3]}\n")
 
     f.close()
-
-
-def create_model(config, q):
-    """Creates a model based on the given configuration.
-
-    Parameters
-    ----------
-    config : dict
-        configuration dictionary
-    q : list[float] or list[list[float]]
-        bending parameters for each tube
-
-    Returns
-    -------
-    Kinematic
-        kinematic model object with parameters given
-        by the configuration dictionary and given q
-    """
-    tube_num = config.get('tube_number')
-    names = config.get('strain_bases')
-
-    config_dof = config.get('q_dof')
-    if isinstance(config_dof, int):  # q_dof given as int (each tube has same dof)
-        output_q_dof = [config_dof] * tube_num
-        print(f'Each base has same degrees of freedom: {config_dof}.')
-    else:  # q_dof given as list
-        output_q_dof = config_dof
-    strain_bases = get_strains(names, output_q_dof)
-
-    # q given as single list
-    if len(q) == sum(output_q_dof) and not isinstance(q[0], list):
-        q_list = []
-        for i in range(tube_num):
-            q_list.append(q[i * output_q_dof[i]:(i + 1) * output_q_dof[i]])
-        output_q = np.asarray(q_list)
-    elif len(q) == tube_num:  # q given as nested-list, one for each tube
-        output_q = np.asarray(q)
-    else:
-        raise ValueError(f"Given q of {q} is not the correct size.")
-
-    config_lengths = config.get('insertion_max')
-    if isinstance(config_lengths, int):  # given as int
-        lengths = [config_lengths] * tube_num
-        print(f'Each tube length is the same: {config_lengths}.')
-    else:  # given as list
-        lengths = config_lengths
-
-    return Kinematic(tube_num, output_q, output_q_dof, lengths, config.get('delta_x'), strain_bases)
