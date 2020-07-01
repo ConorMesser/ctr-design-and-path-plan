@@ -6,9 +6,10 @@ model_type: "kinematic"
 heuristic_type: "square_obstacle_avg_plus_weighted_goal"
 tube_number: 2
 tube_radius:
-- 3
-- 2.4
+  outer: [0.9, 0.6]
+  inner: [0.7, 0.4]
 collision_objects_filename: "init_objects.json"
+run_identifier: "this_run"
 
 # for nelder mead
 optimize_iterations: 60
@@ -16,8 +17,9 @@ optimizer_precision: 0.5
 
 # for rrt solver
 step_bound: 3
-insertion_max: 120
-nearest_neighbor_function: 2
+tube_lengths:
+  - 120
+  - 120
 iteration_number: 2000
 single_tube_control: True
 
@@ -25,10 +27,18 @@ single_tube_control: True
 rewire_probability: 0.1
 
 # for kinematic model
-q_dof: 3
-num_discrete_points: 121
+q_dof:
+  - 2
+  - 3
+delta_x: 1
   # insertion_max: 120 - should match solver
-strain_bases: "linear, linear"  #  - number should match number of tubes ** can be set by main **
+strain_bases:
+  - "linear"
+  - "linear"
 
 # for obstacle weighted goal heuristic
 goal_weight: 3
+
+# for follow the leader heuristic
+only_tip: True
+insertion_weight: 10  # with insertion consideration

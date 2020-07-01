@@ -1,3 +1,10 @@
+"""Init Collision handles the initializing of collision objects.
+
+The Init Collision module contains helper functions for parsing
+json files (an objects_file) and STL files, describing an obstacle
+or goal mesh. It also contains a helper function for rotation matrices.
+"""
+
 import fcl
 from stl import mesh
 import json
@@ -5,10 +12,24 @@ import numpy as np
 
 
 def add_goal(init_objects_file):
-    """Returns the hard-coded CollisionObject
+    """Returns the hard-coded CollisionObject.
 
+    Parameters
+    ----------
+    init_objects_file : pathlib.PosixPath
+        path to the json file describing the obstacles and goal
+
+    Returns
+    -------
+    fcl.CollisionObject
+        the goal as a collision object
+
+    Notes
+    -----
     In the current formulation, only one object is passed. If multiple goal
-    objects are defined in the json file, the whole list should be passed."""
+    objects are defined in the json file, return line must be change
+    to pass the whole list.
+    """
 
     goals = parse_json('goal', init_objects_file)
 
@@ -16,18 +37,42 @@ def add_goal(init_objects_file):
 
 
 def add_obstacles(init_objects_file):
-    """Returns the hard-coded CollisionObjects in a list"""
+    """Returns the hard-coded CollisionObjects in a list.
+
+    Parameters
+    ----------
+    init_objects_file : pathlib.PosixPath
+        path to the json file describing the obstacles and goal
+
+    Returns
+    -------
+    list[fcl.CollisionObject]
+        list of obstacles as collision objects
+    """
 
     return parse_json('obstacles', init_objects_file)
 
 
 def parse_mesh(filename):
-    """Extracts vertices from given stl file
+    """Extracts vertices from given stl file.
 
+    Parameters
+    ----------
+    filename : str
+        name of the stl file; must be in working path
+
+    Returns
+    -------
+    (list[list[float]], list[list[float]])
+        list of x, y, z vertices; list of triangle indices
+
+    Notes
+    -----
     STL file will most likely be exported in mm, however no unit information is
     given in the file. Additionally, stl files can be exported wrt the original
     coordinate system or shifted so all coordinates are positive. Regardless,
-    care will have to be given aligning other objects to the meshes"""
+    care must be given to align other objects to the meshes.
+    """
     this_mesh = mesh.Mesh.from_file(filename)
     vertices = []
     tris = []
@@ -41,6 +86,23 @@ def parse_mesh(filename):
 
 
 def parse_json(object_type, init_objects_file):
+    """Parse the given objects file for the given object_type.
+
+    Constructs collision objects based on the parameters given
+    in the json file, creating a list of obstacles or the goal.
+
+    Parameters
+    ----------
+    object_type : str
+        Type of object (either obstacle or goal)
+    init_objects_file : pathlib.PosixPath
+        path to the json file describing the obstacles and goal
+
+    Returns
+    -------
+    list[fcl.CollisionObject]
+        list of Collision Objects based on the json parameters
+    """
     f = init_objects_file.open()
     full_json = json.load(f)
     f.close()
@@ -65,7 +127,6 @@ def parse_json(object_type, init_objects_file):
                 this_transform = fcl.Transform(o.get('transform'))
             elif o.get('shape') == 'Cylinder':
                 this_obj = fcl.Cylinder(o.get('radius'), o.get('length'))
-
                 direction = o.get('direction')
                 rot = rotate_align(np.asarray(direction))
                 this_transform = fcl.Transform(rot, o.get('transform'))
@@ -85,19 +146,27 @@ def parse_json(object_type, init_objects_file):
 def rotate_align(vector_to, vector_from=np.array([0, 0, 1])):
     """Returns a rotation matrix to align the given vectors.
 
-    Adapted from Kevin Moran's article on noacos derivation which can be found:
-    https://gist.github.com/kevinmoran/b45980723e53edeb8a5a43c49f134724
-
     Parameters
     ----------
-    vector_to : numpy 3x1 array
-        The goal vector
-    vector_from : numpy 3x1 array
-        The initial vector, with a default of the z-axis unit vector
+    vector_to : ndarray
+        The goal vector, as a 3x1 array
+    vector_from : ndarray
+        The initial vector, as a 3x1 array, with default z-axis unit vector
 
     Returns
     -------
-    3x3 numpy array : the rotation matrix to transform vector_from to vector_to
+    ndarray
+        the 3x3 rotation matrix to transform vector_from to vector_to
+
+    Notes
+    -----
+    Adapted from Kevin Moran's article on noacos derivation in [1]
+
+    References
+    ----------
+    [1] Kevin Moran, "How to Calculate a Rotation Matrix to Align Vector A
+    to Vector B in 3D",
+    https://gist.github.com/kevinmoran/b45980723e53edeb8a5a43c49f134724
     """
     axis = np.cross(vector_from, vector_to)
     cos_a = np.dot(vector_from, vector_to)

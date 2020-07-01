@@ -105,6 +105,7 @@ test/configuration/config_integration.yaml
 
 # output files
 outputs
+output
 
 # configuration files other than the default/example files
 configuration/*.yaml

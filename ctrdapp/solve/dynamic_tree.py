@@ -1,4 +1,5 @@
 from scipy import spatial
+import pympnn
 
 
 class DynamicTree:
@@ -18,15 +19,17 @@ class DynamicTree:
     data structures.
     """
 
-    def __init__(self, dim, ins, rot, init_heuristic, init_g_curves):
+    def __init__(self, dim, ins, rot, init_heuristic, init_g_curves, max_tree_size, scaling):
         """
         Parameters
         ----------
+        scaling :
+        max_tree_size :
         dim : int
             number of dimensions represented in the node data
-        ins : list of float
+        ins : list[float]
             initial insertion values
-        rot : list of float
+        rot : list[float]
             initial rotation values
         init_heuristic : Heuristic
             Cost function and information for this node
@@ -37,19 +40,19 @@ class DynamicTree:
 
         init_insert_indices = [len(init_g_curves[0]) - 1] * self.tube_num
         first_node = Node(ins, rot, dim, init_heuristic, init_g_curves, init_insert_indices)
-        ins_list = [ins]
-        first_kd = spatial.KDTree(ins_list)
+        topology = [1, 2] * dim  # 1 = linear, 2 = circular (rotation) for each tube
+        full_scale = scaling * dim  # weights for insertion vs. rotation (could be passed in todo)
+        self.kdtree = pympnn.KDTree_topologies(dim * 2, 16, topology, full_scale, max_tree_size + 2)
+        """KDtree: utilizes the c++ mpnn library representing KD-trees with accurate topology."""
+
+        first_point = ins + rot
+        first_point[::2] = ins
+        first_point[1::2] = rot
+        self.kdtree.add_point(first_point)
 
         self.nodes = [first_node]
         """list of node: initialized with first node, filled by insert method"""
-        self.map2nodes = [0]
-        """list of int: holds references to node location in nodes.
-        Position in list matches position in KDtree, arranged from smallest to
-        largest (each with size 2^i)."""
-        self.kdtrees = [first_kd]
-        """list of KDtree: list to hold KDtrees which have size (2^i). 
-        i.e. sizes in position in list: [1, 2, 4, 8, 16]"""
-        self.solution = []  # use if not test (= true) to check for empty list
+        self.at_goal = []  # use if not test (= true) to check for empty list
         """list of int: gives the indices of the successful nodes."""
 
     def nearest_neighbor(self, x):
@@ -62,84 +65,131 @@ class DynamicTree:
 
         Returns
         -------
-        list of float
+        (list of float; int; list of float) :
             array giving the insertion values of the nearest neighbor
-        int
+            array giving the rotation values of the nearest neighbor
             the index of the nearest neighbor (as stored in nodes array)
-        list of float
             array giving the insertion values of the neighbor's parent
         """
 
-        min_dist = float('inf')
-        loc_best = None
-        i_best = None
-        for i in range(0, len(self.kdtrees)):
-            if self.kdtrees[i] is not None:
-                [this_dist, this_loc] = self.kdtrees[i].query(x)
-                if this_dist < min_dist:
-                    min_dist = this_dist
-                    loc_best = this_loc
-                    i_best = i
-        final_ind = 2**i_best + loc_best - 1
-        nodes_ind = self.map2nodes[final_ind]
-        final_node = self.nodes[nodes_ind]
+        min_dist, node_ind = self.kdtree.k_nearest_neighbor(x, 1)  # returns lists
+
+        final_node = self.nodes[node_ind[0]]
 
         parent_ind = final_node.parent
         if parent_ind is not None:
             parent_node = self.nodes[parent_ind]
         else:  # first node has no parent
             parent_node = final_node
-        return final_node.insertion, nodes_ind, parent_node.insertion
+        return final_node.insertion, final_node.rotation, node_ind[0], parent_node.insertion
+
+    def find_all_nearest_neighbor(self, x, max_distance):
+        """Finds all the nearest neighbors to x within given distance (up to 16 neighbors).
+
+        Parameters
+        ----------
+        x: list[float]
+            given point
+        max_distance: float
+            maximum distance from x allowed
+
+        Returns
+        -------
+        list[int]
+            the indices of the nearest neighbors (as stored in nodes array)
+        """
+
+        # move this to c++ code ??? todo
+
+        dist = [0]
+        i = 0
+        while dist[-1] <= max_distance and i < 3:
+            dist, indices = self.kdtree.k_nearest_neighbor(x, 4 * 2**i)  # try 4, then 8, then 16
+            i = i + 1
+
+        for ind, this_distance in enumerate(dist):
+            if this_distance > max_distance:
+                final_index = ind - 1
+                break
+            else:
+                final_index = ind
+
+        if final_index == -1:  # should return at least one nearest_neighbor
+            final_index = 0
+
+        return indices[0:final_index+1]
 
     def insert(self, ins, rot, parent, heuristic, g_curves, insert_indices):
         """Inserts the new point into the tree with the given data and parent
 
         Parameters
         ----------
-        ins : list of float
+        ins : list[float]
             The insertion values for the point to be added to the tree
-        rot : list of float
+        rot : list[float]
             The rotation values for the point to be added to the tree
         parent : int
             The index of the parent node for this new node
         heuristic : Heuristic
             The cost structure and information for this new node
-        g_curves : list of list of 4x4 array
-            SE3 arrays for this node where g_curves[tube #][index] = 4x4 SE3
-        insert_indices : list of int
+        g_curves : list[list[np.ndarray]]
+            4x4 SE3 arrays for this node where g_curves[tube #][index] = 4x4 SE3
+        insert_indices : list[int]
             corresponds to index for "origin" SE3 array for each g_curve tube
 
         Returns
         -------
         VOID
         """
-
-        heuristic.calculate_cost_from_parent(self.nodes[parent].heuristic)
+        init_insertion = set(ins) == {0.0}
+        heuristic.calculate_cost_from_parent(self.nodes[parent].heuristic, init_insertion=init_insertion)
         new_node = Node(ins, rot, self.tube_num, heuristic, g_curves, insert_indices, parent)
         self.nodes.append(new_node)
         this_node_index = len(self.nodes) - 1
         self.nodes[parent].children.append(this_node_index)
 
-        # Find the first empty KDtree
-        k = 0
-        while k < len(self.kdtrees) and self.kdtrees[k] is not None:
-            k = k+1
-        new_data = []
+        this_point = ins + rot
+        this_point[::2] = ins
+        this_point[1::2] = rot
+        self.kdtree.add_point(this_point)
 
-        # collect data from all previous (smaller) KDtrees
-        for j in range(0, 2**k-1):
-            new_data.append(self.nodes[self.map2nodes[j]].insertion)
-            DynamicTree._assign(self.map2nodes, j+2**k-1, self.map2nodes[j])
-            self.map2nodes[j] = None
-        new_data.append(ins)
-        DynamicTree._assign(self.map2nodes, 2**(k+1)-2, this_node_index)
+    def no_cycle(self, parent_ind, child_ind):
+        ancestor = self.nodes[parent_ind].parent
 
-        # build new KDtree in the empty position
-        DynamicTree._assign(self.kdtrees, k, spatial.KDTree(new_data))
+        if ancestor == child_ind:
+            return False
+        elif ancestor == 0:
+            return True
+        elif ancestor is None:
+            raise ValueError('Parent_ind should never be entered as 0 (root node).')
+        else:
+            return self.no_cycle(ancestor, child_ind)
 
-        # delete previous KDtrees
-        for i in range(0, k):
-            self.kdtrees[i] = None
+    def reset_heuristic_all_children(self, ind):
+        parent_heuristic = self.nodes[ind].heuristic
+        children = self.nodes[ind].children
+        for ch in children:
+            ins = self.nodes[ch].insertion
+            init_insertion = set(ins) == {0.0}
+
+            self.nodes[ch].heuristic.calculate_cost_from_parent(parent_heuristic, reset=True,
+                                                                init_insertion=init_insertion)
+            self.reset_heuristic_all_children(ch)
+
+    def swap_parents(self, current_ind, new_parent_ind, new_heuristic):
+        previous_parent = self.nodes[current_ind].parent
+        new_parent_heuristic = self.nodes[new_parent_ind].heuristic
+        self.nodes[current_ind].heuristic = new_heuristic
+        self.nodes[previous_parent].children.remove(current_ind)
+        self.nodes[current_ind].parent = new_parent_ind
+        self.nodes[new_parent_ind].children.append(current_ind)
+
+        ins = self.nodes[current_ind].insertion
+        init_insertion = set(ins) == {0.0}
+
+        new_heuristic.calculate_cost_from_parent(new_parent_heuristic, reset=True,
+                                                 init_insertion=init_insertion)
+        self.reset_heuristic_all_children(current_ind)
 
     def get_costs(self, child_ind):
         """Retrieves list of costs from child to root parent
@@ -151,7 +201,7 @@ class DynamicTree:
 
         Returns
         -------
-        list of float
+        [float]
             costs of each node from the given index to the root
         """
 
@@ -182,17 +232,21 @@ class DynamicTree:
             corresponds to index for "origin" SE3 array for each g_curve tube
         """
 
-        i = child_ind
-        insertion = [self.nodes[i].insertion]
-        rotation = [self.nodes[i].rotation]
-        insert_indices = [self.nodes[i].insert_indices]
-        while i != 0:
-            i = self.nodes[i].parent
-            insertion.append(self.nodes[i].insertion)
-            rotation.append(self.nodes[i].rotation)
-            insert_indices.append(self.nodes[i].insert_indices)
+        index_list = self.get_index_list(child_ind)
+        insertion = [self.nodes[i].insertion for i in index_list]
+        rotation = [self.nodes[i].rotation for i in index_list]
+        insert_indices = [self.nodes[i].insert_indices for i in index_list]
 
         return insertion, rotation, insert_indices
+
+    def get_index_list(self, child_ind):
+        i = child_ind
+        index_list = [i]
+        while i != 0:
+            i = self.nodes[i].parent
+            index_list.append(i)
+
+        return index_list
 
     def get_tube_curves(self, child_ind):
         """Retrieves list of g_curves from **child to root**
@@ -216,26 +270,23 @@ class DynamicTree:
 
         return g_out
 
-    @staticmethod
-    def _assign(this_list, ind, val):
-        """Adds an item to the end of a list or places it at the given index
+    def save_tree(self, output_dir):
+        filename = output_dir / "tree.txt"
+        tree_file = open(filename, "w")
 
-        If index is
+        for i in range(len(self.nodes)):
+            ins_str = ", ".join(str(ins) for ins in self.nodes[i].insertion)
+            rot_str = ", ".join(str(rot) for rot in self.nodes[i].rotation)
+            parent_str = self.nodes[i].parent
+            if self.at_goal.__contains__(i):
+                at_goal = True
+            else:
+                at_goal = False
+            cost = self.nodes[i].heuristic.get_cost()
+            this_node_str = f"{i} | {ins_str} | {rot_str} | {parent_str} | {cost} | {at_goal}\n"
+            tree_file.write(this_node_str)
 
-        Parameters
-        ----------
-        this_list : list of any
-        ind : int
-            index at which to insert the new value
-        val : any
-            new value to insert into the list
-        """
-        if len(this_list) <= ind:
-            this_list.append(val)
-            if len(this_list) < ind:
-                raise UserWarning("Index given is beyond list size (+1)")
-        else:
-            this_list[ind] = val
+        tree_file.close()
 
 
 class Node:
@@ -245,9 +296,9 @@ class Node:
         """
         Parameters
         ----------
-        insertion : list of float
+        insertion : list[float]
             insertion values
-        rotation: list of float
+        rotation: list[float]
             rotation values
         dim : int
             number of dimensions tree has for error checking

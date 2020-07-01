@@ -1,0 +1,34 @@
+# config_integration.yaml file
+
+optimizer_type: "nelder_mead"
+solver_type: "rrt"
+model_type: "kinematic"
+heuristic_type: "follow_the_leader"
+optimizer_precision: 0.1
+tube_number: 1
+tube_radius:
+- 1.5
+collision_objects_filename: "init_objects_blank.json"
+
+# for rrt solver
+step_bound: 2
+insertion_max: 60
+nearest_neighbor_function: 2
+iteration_number: 5000
+single_tube_control: True
+
+# for rrt_star solver (in addition to rrt)
+  # rewire_probability: 0.1
+
+# for kinematic model
+q_dof: 1
+num_discrete_points: 121
+  # insertion_max: 50 - should match solver
+strain_bases: "constant"  # specify anything? should get this from main, but what about for testing?
+
+# for obstacle weighted goal heuristic
+goal_weight: 3
+
+# for follow the leader heuristic
+only_tip: False
+insertion_weight: 10  # with insertion consideration

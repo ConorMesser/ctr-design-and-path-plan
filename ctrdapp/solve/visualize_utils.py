@@ -2,6 +2,10 @@ import json
 import pyvista as pv
 import numpy as np
 import time
+from math import pi
+import matplotlib.path as mpath
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
 
 
 def parse_json(object_type, init_objects_file):
@@ -41,9 +45,10 @@ def parse_json(object_type, init_objects_file):
     return collision_objects
 
 
-def visualize_curve(curve, objects_file, tube_num, tube_rad, visualize_from_indices=None):
+def visualize_curve(curve, objects_file, tube_num, tube_rad, output_dir, filename, visualize_from_indices=None):
     plotter = pv.Plotter()
-    plotter.open_movie("this_movie.mp4", framerate=3)  # todo
+    full_filename = output_dir / f"{filename}.mp4"
+    plotter.open_movie(full_filename, framerate=3)  # todo
 
     add_objects(plotter, objects_file)
 
@@ -65,14 +70,15 @@ def visualize_curve(curve, objects_file, tube_num, tube_rad, visualize_from_indi
     plotter.close()
 
 
-def visualize_curve_single(curve, objects_file, tube_num, tube_rad, visualize_from_indices=None):
+def visualize_curve_single(curve, objects_file, tube_num, tube_rad, output_dir, filename, visualize_from_indices=None):
     plotter = pv.Plotter()
 
     add_objects(plotter, objects_file)
 
     _ = add_single_curve(plotter, curve, tube_num, tube_rad, visualize_from_indices)
 
-    plotter.show()
+    full_filename = output_dir / f"{filename}.pdf"
+    plotter.save_graphic(full_filename)
 
 
 # todo remove visualize_from_indices
@@ -115,25 +121,89 @@ def add_objects(plotter, objects_file):
     # plot goal mesh (should only be one)
     goal_meshes = parse_json('goal', objects_file)
     for g_m in goal_meshes:
-        plotter.add_mesh(g_m, color='b')
+        plotter.add_mesh(g_m, color='b', opacity=0.3)
 
     # plot insertion plane
     plane = pv.Plane(direction=[1, 0, 0], i_size=30, j_size=30)
     plotter.add_mesh(plane, color='tan', opacity=0.4)
 
 
-def visualize_tree(from_points, to_points, node_list):
-    plotter = pv.Plotter()
-    # todo add labels/color based on node indices
+def visualize_tree(from_points, to_points, node_list, output_dir, filename, solution_list, at_goal_list, cost_list):
+    fig, ax = plt.subplots()
 
-    plotter.add_axes_at_origin(xlabel='Tube 1', ylabel='Tube 2', zlabel='Tube 3')
-    plotter.add_mesh(pv.Sphere(radius=0.25, center=from_points[0]))
+    path_data = []
+    solution_data = []
+    goal_data = []
+    to_data = []
+    for from_pt, to_pt, node in zip(from_points, to_points, node_list):  # node index points to the TO node
+        solution_node = solution_list.__contains__(node)
+        goal_node = at_goal_list.__contains__(node)
 
-    for ind, points in enumerate(zip(from_points, to_points)):
-        p_from = points[0]
-        p_to = points[1]
-        plotter.add_mesh(pv.Sphere(radius=0.25, center=p_to))
+        if from_pt[1] > pi:
+            from_pt = [from_pt[0], from_pt[1] - 2*pi]
+        if to_pt[1] > pi:
+            to_pt = [to_pt[0], to_pt[1] - 2 * pi]
 
-        plotter.add_mesh(pv.Line(p_from, p_to))
+        to_data.append(to_pt)
 
-    plotter.show()
+        if abs(to_pt[1] - from_pt[1]) > pi:
+            if from_pt[1] > to_pt[1]:
+                pair_one = ([from_pt[0], from_pt[1] - 2*pi], to_pt)
+                pair_two = (from_pt, [to_pt[0], to_pt[1] + 2*pi])
+            else:
+                pair_one = ([from_pt[0], from_pt[1] + 2 * pi], to_pt)
+                pair_two = (from_pt, [to_pt[0], to_pt[1] - 2 * pi])
+
+            path_data.append((mpath.Path.MOVETO, pair_one[0]))
+            path_data.append((mpath.Path.LINETO, pair_one[1]))
+            path_data.append((mpath.Path.MOVETO, pair_two[0]))
+            path_data.append((mpath.Path.LINETO, pair_two[1]))
+
+            if solution_node:
+                solution_data.append((mpath.Path.MOVETO, pair_one[0]))
+                solution_data.append((mpath.Path.LINETO, pair_one[1]))
+                solution_data.append((mpath.Path.MOVETO, pair_two[0]))
+                solution_data.append((mpath.Path.LINETO, pair_two[1]))
+            if goal_node:
+                goal_data.append((mpath.Path.MOVETO, pair_one[1]))
+                goal_data.append((mpath.Path.MOVETO, pair_two[1]))
+        else:
+            path_data.append((mpath.Path.MOVETO, from_pt))
+            path_data.append((mpath.Path.LINETO, to_pt))
+
+            if solution_node:
+                solution_data.append((mpath.Path.MOVETO, from_pt))
+                solution_data.append((mpath.Path.LINETO, to_pt))
+            if goal_node:
+                goal_data.append((mpath.Path.MOVETO, to_pt))
+
+    # plot lines between points
+    codes, verts = zip(*path_data)
+    path = mpath.Path(verts, codes)
+    patch = mpatches.PathPatch(path, lw=0.5, color='0.6', zorder=1)
+    ax.add_patch(patch)
+
+    # plot solution lines
+    codes, verts = zip(*solution_data)
+    solution_path = mpath.Path(verts, codes)
+    solution_patch = mpatches.PathPatch(solution_path, lw=0.6, color='r', zorder=2)
+    ax.add_patch(solution_patch)
+
+    # plot points
+    c = [cost / max(cost_list) for cost in cost_list]
+    x = [coord[0] for coord in to_data]
+    y = [coord[1] for coord in to_data]
+    ax.scatter(x, y, c=c, cmap='viridis_r', zorder=4, s=0.3)
+
+    # plot at_goal points
+    if goal_data:
+        codes, verts = zip(*goal_data)
+        goal_path = mpath.Path(verts, codes)
+        x_goal, y_goal = zip(*goal_path.vertices)
+        ax.scatter(x_goal, y_goal, color='k', s=2, zorder=3)
+
+    ax.grid()
+    ax.set_ylim(-pi, pi)
+
+    output_full = output_dir / f"{filename}.pdf"
+    plt.savefig(output_full)
