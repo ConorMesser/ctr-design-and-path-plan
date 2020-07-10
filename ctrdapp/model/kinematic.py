@@ -76,7 +76,6 @@ class Kinematic(Model):
         return g_out, eta_out, new_insert_indices, true_insertions, ftl_out
 
     def solve_g(self, indices=None, thetas=None, full=True):
-
         if indices is None:  # default to zero insertion, with s(0) = L
             indices = [disc - 1 for disc in self.num_discrete_points]
         if thetas is None:
@@ -126,7 +125,7 @@ class Kinematic(Model):
 
         return g_out
 
-    def solve_eta(self, velocity_list, prev_insert_indices_list,
+    def solve_eta(self, velocity_list, prev_insert_indices_list,  # todo use halfway point for eta/ftl?
                   delta_theta_list, prev_g):
         """Calculates eta and follow_the_leader array for given parameters.
 

@@ -75,7 +75,7 @@ class Model(ABC):
         pass
 
     @abstractmethod
-    def solve_g(self, indices=None, thetas=None, full=False):
+    def solve_g(self, indices=None, thetas=None, **kwargs):
         """Calculates the g of each point for each tube at given index and theta
 
         At default, the tips of each tube will be aligned with the origin, with
@@ -89,8 +89,8 @@ class Model(ABC):
             Insertion index for each tube, with initial as default (no insertion)
         thetas : list[float]
             Theta for each tube, with initial (0) as default
-        full : boolean
-            Is the full tube needed or just the segment past the insertion index (default)?
+        kwargs
+            Other optional parameters
 
         Returns
         -------

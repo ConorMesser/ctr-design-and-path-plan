@@ -37,7 +37,8 @@ def parse_config(file):
     solvers = {"rrt": ["step_bound", "iteration_number",
                        "tube_lengths", "single_tube_control"],
                "rrt_star": ["step_bound", "iteration_number", "tube_lengths"]}
-    models = {"kinematic": ["q_dof", "delta_x", "tube_lengths", "strain_bases"]}
+    models = {"kinematic": ["q_dof", "delta_x", "tube_lengths", "strain_bases"],
+              "static": ["q_dof", "delta_x", "tube_lengths", "strain_bases"]}
     heuristics = {"square_obstacle_avg_plus_weighted_goal": ["goal_weight"],
                   "only_goal_distance": [],
                   "follow_the_leader": ["only_tip"],
@@ -121,18 +122,18 @@ def config_validation(configuration):
     delta_x = configuration.get('delta_x')
     tube_lengths = configuration.get('tube_lengths')
 
-    if type(q_dof) is int:
+    if isinstance(q_dof, int):
         configuration['q_dof'] = [q_dof] * tube_num
         print(f"Using {q_dof} as q_dof for every tube.\n")
-    elif type(q_dof) is list and len(q_dof) == tube_num:
+    elif isinstance(q_dof, list) and len(q_dof) == tube_num:
         pass
     else:
         raise ValueError(f"Input for q_dof of {q_dof} is not suitable.\n")
 
-    if type(radius) is list and len(radius) == tube_num:
+    if isinstance(radius, list) and len(radius) == tube_num:
         inner = [rad - 0.1 for rad in radius]
         configuration['tube_radius'] = {'outer': radius, 'inner': inner}
-    elif type(radius) is dict and 'outer' in radius.keys() and len(radius.get('outer')) == tube_num:
+    elif isinstance(radius, dict) and 'outer' in radius.keys() and len(radius.get('outer')) == tube_num:
         if 'inner' in radius.keys() and len(radius.get('inner')) == tube_num:
             pass
         else:
@@ -141,10 +142,10 @@ def config_validation(configuration):
     else:
         raise ValueError(f"Input for radius of {radius} is not suitable.\n")
 
-    if type(tube_lengths) is (int, float):
+    if isinstance(tube_lengths, (int, float)):
         configuration['tube_lengths'] = [tube_lengths] * tube_num
         print(f"Using {tube_lengths} as length for every tube.\n")
-    elif type(tube_lengths) is list and len(tube_lengths) == tube_num:
+    elif isinstance(tube_lengths, list) and len(tube_lengths) == tube_num:
         pass
     else:
         raise ValueError(f"Input for tube_lengths of {tube_lengths} is not suitable.\n")

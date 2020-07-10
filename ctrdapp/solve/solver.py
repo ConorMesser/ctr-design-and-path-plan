@@ -34,10 +34,11 @@ class Solver(ABC):
         self.model = model
         self.tube_num = configuration.get("tube_number")
         """int : Number of tubes used in this algorithm run"""
-        self.tube_rad = configuration.get("tube_radius").get("outer")  # todo
+        self.tube_rad = configuration.get("tube_radius").get("outer")
         """List of float : Radii of the tubes"""
         self.heuristic_factory = heuristic_factory
         self.cd = collision_detector
+        self.found_solution = False
 
     @abstractmethod
     def get_path(self, index):

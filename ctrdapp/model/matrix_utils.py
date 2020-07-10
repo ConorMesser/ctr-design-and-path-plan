@@ -85,6 +85,33 @@ def little_adjoint(screw_in):
     return adjoint
 
 
+def little_coadjoint(screw_in):
+    """Computes the co-adjoint matrix from a screw.
+
+    Parameters
+    ----------
+    screw_in : np.ndarray or list[float]
+        The input 6x1 screw
+
+    Returns
+    -------
+    np.ndarray
+        The co-adjoint matrix of the screw_in
+
+    Notes
+    -----
+    ????
+    """
+
+    coadjoint = np.zeros([6, 6])
+    SO3 = tilde(screw_in[0:3])
+    p_tilde = tilde(screw_in[3:6])
+    coadjoint[0:3, 0:3] = SO3
+    coadjoint[0:3, 3:6] = p_tilde
+    coadjoint[3:6, 3:6] = SO3
+    return coadjoint
+
+
 def tilde(vector):
     """Makes the 3-vector into a 3x3 skew-symmetric matrix
 

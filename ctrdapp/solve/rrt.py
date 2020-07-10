@@ -42,8 +42,6 @@ class RRT(Solver):
         """float : maximum rotation from nearest neighbor, in Radians"""
         self.insert_max = configuration.get("tube_lengths")
         """float : maximum tube/insertion length"""
-        self.found_solution = False  # todo is this necessary?
-        """boolean : has any Node collided with the goal?"""
         self.single_tube_control = configuration.get("single_tube_control")
         """boolean : can only one tube be controlled (inserted/rotated) per step?"""
 

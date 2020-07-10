@@ -286,7 +286,7 @@ def check_qdof(base, q_dof):
     ValueError
         If the input q_dof doesn't match the base dof options
     """
-    if base == 'helix' or base == 'pure_helix':
+    if base == 'linear_helix' or base == 'pure_helix':
         if q_dof != 2:
             raise ValueError(f'{base} should have 2 degrees of freedom, not {q_dof}.')
     elif base == 'quadratic' or base == 'linear':
