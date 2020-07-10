@@ -33,7 +33,10 @@ def add_goal(init_objects_file):
 
     goals = parse_json('goal', init_objects_file)
 
-    return goals[0]
+    if not goals:
+        return None
+    else:
+        return goals[0]
 
 
 def add_obstacles(init_objects_file):

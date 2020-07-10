@@ -1,8 +1,33 @@
+"""Container for the result of an Optimizer."""
+
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import numpy as np
+import pathlib
+
+from ctrdapp.solve.solver import Solver
 
 
 class OptimizeResult:
+    """Packages pertinent results of the optimizer find_min function.
+
+    Parameters
+    ----------
+    best_q : np.ndarray
+        the optimal coordinates
+    best_solver : Solver
+        the optimal solver (to give access to visualization tools)
+    success : bool
+        did the optimization converge?
+    num_function_eval : int
+        number of function (solver) evaluations
+    num_iterations : int
+        number of iterations of optimizer
+    completion_time : float
+        total time for optimizer to run (in sec)
+    optimize_process : list[dict]
+        list of dicts{q, cost} recording the process of the optimizer
+    """
 
     def __init__(self, best_q, best_solver, success, num_function_eval,
                  num_iterations, completion_time, optimize_process):
@@ -40,17 +65,20 @@ class OptimizeResult:
         plt.show()
 
     def save_result(self, output_dir):
-        """
-        -save tree
-        -save solution (path for tree)
-        -save general info (times, iter_num, best Q and best cost?)
-        -save process
+        """Save the optimizer information, including best solver info and tree visualization.
+
+        Parameters
+        ----------
+        output_dir : pathlib.Path
+            full path of the output directory
         """
         self.best_solver.save_tree(output_dir)
         self.best_solver.save_best_solution(output_dir)
-        self.best_solver.visualize_full_search(output_dir, with_solution=True)
+        for i in range(self.best_solver.tube_num):
+            self.best_solver.visualize_full_search(output_dir, tube_num=i, with_solution=True)
 
         filename = output_dir / "optimize_result.txt"
+        # noinspection PyTypeChecker
         optimize_result = open(filename, "w")
 
         optimize_result.write(f"Optimizer Success: {self.success}\n")
@@ -64,6 +92,7 @@ class OptimizeResult:
         optimize_result.close()
 
         filename = output_dir / "optimize_process.txt"
+        # noinspection PyTypeChecker
         optimize_process = open(filename, "w")
 
         for i in range(len(self.optimize_process)):

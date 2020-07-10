@@ -11,19 +11,21 @@ class TestParseConfig(unittest.TestCase):
                             "model_type": "kinematic",
                             "heuristic_type": "square_obstacle_avg_plus_weighted_goal",
                             "tube_number": 2,
-                            "tube_radius": 3,
+                            "tube_lengths": [60, 50],
+                            "tube_radius": {'innner': [2.9, 1.9], 'outer': [3, 2]},
                             "collision_objects_filename": "init_objects.json",
                             "optimizer_precision": 0.1,
+                            "optimize_iterations": 50,
                             "step_bound": 3,
-                            "insertion_max": 120,
-                            "nearest_neighbor_function": 2,
+                            "delta_x": 1,
                             "iteration_number": 2000,
-                            "goal_weight": 3,
-                            "q_dof": 3,
-                            "num_discrete_points": 101
+                            "goal_weight": 2,
+                            "q_dof": [1, 1],
+                            "single_tube_control": True,
+                            "strain_bases": ["constant", "constant"]
                             }
 
-    def test_parse_config(self):
+    def test_parse_config(self):  # todo update to test config validation
         path = pathlib.Path().absolute()
         file = path / "configuration" / "config_specific_test.yaml"
 
@@ -34,10 +36,10 @@ class TestParseConfig(unittest.TestCase):
         blank_file = path / "configuration" / "blank.yaml"
 
         blank_config, _ = parse_config(blank_file)
-        default_keys = self.test_config.keys()
+        default_keys = self.test_config.keys()  # default for specified RRT, kinematic, SOAPWG, Nelder-Mead
         blank_keys = blank_config.keys()
         # will fail if add'nl attributes are added or defaults changed****
-        self.assertEqual(blank_keys, default_keys)
+        self.assertCountEqual(blank_keys, default_keys)
 
 
 if __name__ == '__main__':

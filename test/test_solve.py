@@ -189,7 +189,7 @@ class TestDynamicTree(unittest.TestCase):
         self.assertEqual(heuristic_four.get_cost(), 11/3)
         self.assertEqual(heuristic_five.get_cost(), 4)
 
-        tree.swap_parents(2, 5, new_heuristic)
+        # tree.swap_parents(2, 5, new_heuristic)
 
         self.assertEqual(heuristic_one.get_cost(), 1)
         self.assertEqual(heuristic_two.get_cost(), 5/2)
@@ -264,10 +264,10 @@ class TestStep(unittest.TestCase):
         self.assertAlmostEqual(delta[0], 0.3)
         self.assertAlmostEqual(delta[1], 0.4)
 
-    def test_get_delta_rotation(self):
+    def test_get_delta_rotation(self):  # todo
         self.assertTrue(False)
 
-    def test_single_tube_value(self):
+    def test_single_tube_value(self):  # todo
         # previous tube selection maintained w/ random < probability
         new_ins, num = get_single_tube_value(
             self.insert_rand, self.first_tube_neighbor, self.parent, 0.8, 0.7999)

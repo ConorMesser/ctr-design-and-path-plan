@@ -12,6 +12,7 @@
       <w>ndarray</w>
       <w>pathlib</w>
       <w>quat</w>
+      <w>vals</w>
     </words>
   </dictionary>
 </component>

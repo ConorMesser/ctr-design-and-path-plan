@@ -19,6 +19,7 @@ class TestCollision(unittest.TestCase):
         self.curve1 = [[se3_generator([0, 0, 30]), se3_generator([0, 0, -5])]]
         self.curve2 = [[se3_generator([0, 0, 0]), se3_generator([0, 0, 3]),
                        se3_generator([0, 2, 3])]]
+        self.curve3 = [[se3_generator([0, 0, 0]), se3_generator([18.99, 0, 0])]]
 
     def test_build_tube(self):
         self.assertEqual(self.basic_checker._build_tube(
@@ -55,7 +56,9 @@ class TestCollision(unittest.TestCase):
         self.assertEqual(len(build_tube2), len(tube2))
 
     def test_check_collision(self):  # todo write better tests
-        self.assertEqual(self.box_checker.check_collision(self.curve1, [1]), (3, 4))
+        res = self.box_checker.check_collision(self.curve3, [1])
+        self.assertEqual(res[0], -1)
+        self.assertAlmostEqual(res[1], 0.01, 6)
 
 
 def se3_generator(point):

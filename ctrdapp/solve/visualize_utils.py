@@ -77,6 +77,7 @@ def visualize_curve_single(curve, objects_file, tube_num, tube_rad, output_dir, 
 
     _ = add_single_curve(plotter, curve, tube_num, tube_rad, visualize_from_indices)
 
+    # plotter.show()  todo
     full_filename = output_dir / f"{filename}.pdf"
     plotter.save_graphic(full_filename)
 

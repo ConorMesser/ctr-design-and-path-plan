@@ -5,7 +5,7 @@ from math import pi
 from time import strftime
 
 from ctrdapp.config.parse_config import parse_config
-from ctrdapp.model.kinematic import create_model
+from ctrdapp.model.model_factory import create_model
 from ctrdapp.solve.visualize_utils import visualize_curve_single, add_single_curve, add_objects
 from ctrdapp.heuristic.heuristic_factory import create_heuristic_factory
 from ctrdapp.collision.collision_checker import CollisionChecker
@@ -22,7 +22,7 @@ class VisualizeUtilsTest(unittest.TestCase):
         configuration, dictionaries = parse_config(file)
         objects_file = path / "configuration" / configuration.get("collision_objects_filename")
         # need model
-        this_model = create_model(config=configuration, q=[[0.01, 0.0005], [0.02, 0.0007]])
+        this_model = create_model(configuration, q=[[0.01, 0.0005], [0.02, 0.0007]])
 
         # need to visualize
         g_out = this_model.solve_g(indices=[0, 0], full=True)
@@ -30,57 +30,13 @@ class VisualizeUtilsTest(unittest.TestCase):
         visualize_curve_single(g_out, objects_file, configuration.get("tube_number"), configuration.get("tube_radius"),
                                output_path, filename)
 
-    def test_RRT(self):
-        import sys
-        sys.setrecursionlimit(10**4)
-
-        path = pathlib.Path().absolute()
-        file = path / "configuration" / "config_trial.yaml"
-        configuration, dictionaries = parse_config(file)
-
-        run_name = configuration.get("run_identifier")
-        output_path = path / "output" / run_name
-        try:
-            output_path.mkdir(parents=True)
-        except FileExistsError:
-            current_time = strftime("%H%M")
-            current_date = strftime("%m%d%y")
-            new_name = f"{run_name}_{current_date}_{current_time}"
-            output_path = path / "output" / new_name
-            output_path.mkdir(parents=True)
-
-        objects_file = path / "configuration" / configuration.get("collision_objects_filename")
-        this_model = create_model(config=configuration, q=[0.02777777777777778, 1.1111111111111112e-05])
-
-        # heuristic factory
-        heuristic_factory = create_heuristic_factory(configuration,
-                                                     dictionaries.get("heuristic"))
-        # collision detector
-        collision_detector = CollisionChecker(objects_file)
-
-        # rrt
-        this_solver = create_solver(this_model, heuristic_factory, collision_detector, configuration)
-
-        # call get_best_cost
-        cost, best_ind = this_solver.get_best_cost()
-        print(cost)
-
-        # this_solver.visualize_best_solution(objects_file)
-        this_solver.visualize_full_search(output_path, with_solution=True)
-        this_solver.save_tree(output_path)
-        this_solver.save_best_solution(output_path)
-        this_solver.visualize_best_solution(objects_file, output_path)
-        this_solver.visualize_best_solution_path(objects_file, output_path)
-
-        x = 5
-
     def test_visualize_solve_once(self):
         # create model
         path = pathlib.Path().absolute()
         file = path / "configuration" / "config_integration.yaml"
         configuration, dictionaries = parse_config(file)
         objects_file = path / "configuration" / configuration.get("collision_objects_filename")
-        this_model = create_model(config=configuration, q=[[-0.02, 0.001], [0.03, 0.002]])
+        this_model = create_model(configuration, q=[[-0.02, 0.001], [0.03, 0.002]])
 
         # get g previous (using solve_g)
         insert_indices = [100, 100]
@@ -112,11 +68,13 @@ class TestModelAndHeuristics(unittest.TestCase):
         self.objects_file = path / "configuration" / "init_objects_blank.json"
 
         # single constant-curvature tube
-        self.model_constant = create_model(config=self.configuration, q=[0.05])
+        self.model_constant = create_model(self.configuration, q=[0.05])
         self.configuration['tube_number'] = 3
         self.configuration['tube_radius'] = [1.5, 1.2, 0.9]
-        self.configuration['strain_bases'] = "constant, constant, constant"
-        self.model_constant2 = create_model(config=self.configuration, q=[[pi/60], [0], [pi/60]])
+        self.configuration['tube_lengths'] = [60, 60, 60]
+        self.configuration['strain_bases'] = ["constant", "constant", "constant"]
+        self.configuration['q_dof'] = [1, 1, 1]
+        self.model_constant2 = create_model(self.configuration, q=[[pi/60], [0], [pi/60]])
 
     def testConstantModelFTL(self):
         for i in range(-5, 11, 4):  # regardless of the size of insertion
@@ -129,14 +87,14 @@ class TestModelAndHeuristics(unittest.TestCase):
         prev_g_out = self.model_constant.solve_g(indices=[64], thetas=[-85], full=False)
         _, _, _, _, ftl_out = self.model_constant.solve_integrate([0.85], [2], [0], [30], prev_g_out)
         ftl_heuristic = FollowTheLeader(False, ftl_out)
-        self.assertEqual(ftl_heuristic.get_cost(), 0.85)  # equal to the value of omega
+        self.assertAlmostEqual(ftl_heuristic.get_cost(), 0.85)  # equal to the value of omega
 
     def testConstantModel2TubesFTL(self):
         # First and Last tubes have some constant curvature. Second is straight.
         # Initial configuration has last tube with 90 degrees of curvature.
         # First (largest) tube moves from no insertion to 2, but due to equal curvature with
         #  the last tube, the follow the leader heuristic for the last tube should be 0
-        #  other than in the z-velocity (= -pi/3)
+        #  other than in the local x-velocity (= pi/3)
         prev_g_out = self.model_constant2.solve_g(indices=[120, 100, 60], thetas=[0, 0, 0], full=False)
         g_out, _, _, _, ftl_out = self.model_constant2.solve_integrate([0, 0, 0], [2, 0, 0], [0, 0, 0], [2, 10, 30], prev_g_out)
 
@@ -144,9 +102,11 @@ class TestModelAndHeuristics(unittest.TestCase):
         #                        self.configuration.get("tube_number"), self.configuration.get("tube_radius"))
 
         ftl_heuristic = FollowTheLeader(True, ftl_out)
-        for i in range(0, 5):
+        for i in range(0, 6):
+            if i == 3:
+                continue
             self.assertAlmostEqual(ftl_out[-1][-1][i], 0)
-        self.assertAlmostEqual(ftl_out[-1][-1][-1], -pi/3)
+        self.assertAlmostEqual(ftl_out[-1][-1][3], pi/3)
         self.assertAlmostEqual(ftl_heuristic.get_cost(), pi/3)
 
 

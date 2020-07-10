@@ -1,3 +1,5 @@
+"""Class for Nelder Mead optimization."""
+
 from scipy import optimize
 import numpy as np
 import time
@@ -10,23 +12,35 @@ from .optimize_result import OptimizeResult
 
 
 class NelderMead(Optimizer):
+    """Uses the nelder_mead optimize.minimize function to optimize the design.
+
+    Attributes
+    ----------
+    solver_results : list[dict]
+        Collects the results from each iteration (q and cost)
+    best_solver : dict
+        Contains the cost and Solver object of the best solver so far
+    count : int
+        The iteration count, to track progress
+    """
 
     def __init__(self, heuristic_factory, collision_checker, initial_guess, configuration):
         super().__init__(heuristic_factory, collision_checker, initial_guess, configuration)
 
         self.solver_results = []
         self.best_solver = {'cost': 10e9, 'solver': None}
-        self.costs = []
         self.count = 0
 
     def find_min(self):
         func = self.solver_heuristic
 
-        init_simplex = calculate_simplex(self.configuration.get('strain_bases'),
-                                         # self.configuration.get('tube_radius').get('outer'),
-                                         [0.9],  # todo change back
-                                         self.configuration.get('tube_lengths'),
-                                         self.configuration.get('q_dof'))
+        radius = self.configuration.get('tube_radius').get('outer')
+        if radius[0] == 5:  # large radius for single_tube ftl experiment
+            radius = [0.9]
+
+        init_simplex = calculate_simplex(self.configuration.get('strain_bases'), radius,
+                                         self.configuration.get('tube_lengths'), self.configuration.get('q_dof'),
+                                         self.initial_guess)
         print(init_simplex)
         # alter_simplex = input("Would you like to alter the simplex? (yes/no): ")
         # if alter_simplex == 'yes':
@@ -41,6 +55,7 @@ class NelderMead(Optimizer):
 
         start_time = time.time()
 
+        # todo allow for either initial guess or init_simplex
         optimize_result_nm = optimize.minimize(func, self.initial_guess,
                                                method='Nelder-Mead',
                                                options={'xatol': self.precision,
@@ -59,12 +74,24 @@ class NelderMead(Optimizer):
 
         return optimize_result
 
-    def solver_heuristic(self, x: [float]) -> float:
+    def solver_heuristic(self, x):
+        """Calculates cost of solver with this given x.
+
+        Also updates the solver_results and best_cost attributes.
+
+        Parameters
+        ----------
+        x : list[float]
+            input design component q
+
+        Returns
+        -------
+        float
+            cost of solver with given x
+        """
 
         # model from x
         this_model = create_model(self.configuration, x)
-
-        # this_model.solve_g() todo why is this here???
 
         # model, heuristic_factory, collision_detector, configuration
         this_solver = create_solver(this_model, self.heuristic_factory, self.collision_checker, self.configuration)
@@ -83,27 +110,53 @@ class NelderMead(Optimizer):
 
         return cost
 
-    def _find_solver(self, array):
-        for s in self.solver_results:
-            this_q = s.get('q')
-            if (this_q.flatten() == array.flatten()).all():
-                return s
-        print(f"Could not find desired solver for q = {array}. "
-              f"Giving last solver instead.")
-        return self.solver_results[-1]
-
 
 # Q should be bounded (in both + and -) by (2*Emax)/Tube Diameter
 # This is due to physical constraints on the bending curvature (nitinol
 # must remain in the elastic/plastic region given by the Emax)
 # The constant and changing q parameters must be considered to limit the
 # max q possible
-def calculate_simplex(base_names, tube_radii, length, q_dof, e_max=0.05):  # base off of initial guess?? todo
+def calculate_simplex(base_names, tube_radii, length, q_dof, initial_guess, e_max=0.05):
+    """Calculates an initial simplex to use in the Nelder Mead algorithm.
+
+    If initial_guess is provided, bases simplex off of it. However, if any
+    individual value is greater than the value given in the max_from_base
+    function, the max value is used instead.
+
+    Parameters
+    ----------
+
+    base_names : list[str]
+        the base name for each tube
+    tube_radii : list[float]
+        the (outer) radius of each tube
+    length : list[float]
+        the length of each tube
+    q_dof : list[int]
+        the degrees of freedom for the base of each tube
+    initial_guess : np.ndarray or None
+        the initial guess to start the simplex from
+    e_max : float
+        the maximum strain allowed for a tube, (default is 0.05)
+
+    Returns
+    -------
+    list[list[float]]
+        The initial simplex
+    """
+    if initial_guess is None:
+        initial_guess = np.ones(sum(q_dof)) * 100
 
     max_init_array = []
     for i in range(len(tube_radii)):
         tube_arr = max_from_base(base_names[i], e_max / tube_radii[i], length[i], q_dof[i])
-        max_init_array.extend(tube_arr)
+        for ind, val in enumerate(tube_arr):
+            init_index = sum(q_dof[0:i]) + ind
+            if val > initial_guess[init_index]:
+                max_init_array.append(initial_guess[init_index])
+            else:
+                max_init_array.append(val)
+
     dim = len(max_init_array)
     init_simplex = [[q / 2 for q in max_init_array]]
     for i in range(dim):
