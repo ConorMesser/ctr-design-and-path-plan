@@ -1,3 +1,5 @@
+"""Factory method to create a model."""
+
 import numpy as np
 
 from .model import Model
@@ -37,11 +39,14 @@ def create_model(configuration, q) -> Model:
     # q given as single list
     if len(q) == sum(output_q_dof) and not isinstance(q[0], list):
         q_list = []
-        for i in range(tube_num):
-            q_list.append(q[i * output_q_dof[i]:(i + 1) * output_q_dof[i]])
-        output_q = np.asarray(q_list)
+        n = dof_sum = 0
+        while n < tube_num:
+            q_list.append(np.asarray(q[dof_sum:dof_sum + output_q_dof[n]]))
+            dof_sum += output_q_dof[n]
+            n += 1
+        output_q = q_list
     elif len(q) == tube_num:  # q given as nested-list, one for each tube
-        output_q = np.asarray(q)
+        output_q = [np.asarray(this_q) for this_q in q]
     else:
         raise ValueError(f"Given q of {q} is not the correct size.")
 
@@ -59,12 +64,18 @@ def create_model(configuration, q) -> Model:
         radii = configuration.get('tube_radius')
 
         # ndof
-        dof_11 = len(get_basis(1, 1, 1, 1, strain_bases, output_q_dof)[0, :])
-        dof_21 = len(get_basis(1, 1, 2, 1, strain_bases, output_q_dof)[0, :])
-        dof_31 = len(get_basis(1, 1, 3, 1, strain_bases, output_q_dof)[0, :])
-        dof_22 = len(get_basis(1, 1, 2, 2, strain_bases, output_q_dof)[0, :])
-        dof_32 = len(get_basis(1, 1, 3, 2, strain_bases, output_q_dof)[0, :])
-        dof_33 = len(get_basis(1, 1, 3, 3, strain_bases, output_q_dof)[0, :])
+        if tube_num == 3:
+
+            dof_11 = len(get_basis(1, 1, 1, 1, strain_bases, output_q_dof, tube_num)[0, :])
+            dof_21 = len(get_basis(1, 1, 2, 1, strain_bases, output_q_dof, tube_num)[0, :])
+            dof_31 = len(get_basis(1, 1, 3, 1, strain_bases, output_q_dof, tube_num)[0, :])
+        elif tube_num == 2:
+            dof_11 = dof_21 = dof_31 = 0
+        else:
+            raise ValueError(f'The static model does not support {tube_num} tubes.')
+        dof_22 = len(get_basis(1, 1, 2, 2, strain_bases, output_q_dof, tube_num)[0, :])
+        dof_32 = len(get_basis(1, 1, 3, 2, strain_bases, output_q_dof, tube_num)[0, :])
+        dof_33 = len(get_basis(1, 1, 3, 3, strain_bases, output_q_dof, tube_num)[0, :])
         ndof = {(1, 1): dof_11, (2, 1): dof_21, (3, 1): dof_31, (2, 2): dof_22, (3, 2): dof_32, (3, 3): dof_33}
 
         return Static(tube_num, output_q, output_q_dof, lengths, configuration.get('delta_x'), strain_bases, ndof, radii)
