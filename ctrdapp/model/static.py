@@ -34,6 +34,8 @@ class Static(Kinematic):
         dictionary between (tube_num, section_num) and degrees of freedom
     radius : dict
         dictionary of 'inner' and 'outer' radii, {str : list[float]}
+    static_basis : StaticBasis
+        class defining how to calculate the basis for the static equilibrium
 
     Attributes
     ----------
@@ -50,14 +52,17 @@ class Static(Kinematic):
         the given indices for each section, to be reset by solve_g
     theta : list[float]
         the given thetas, to be reset by solve_g
+    static_basis : StaticBasis
+        class defining how to calculate the basis for the static equilibrium
     """
-    def __init__(self, tube_num, q, q_dof, max_tube_length, delta_x, strain_base, ndof, radius):
+    def __init__(self, tube_num, q, q_dof, max_tube_length, delta_x, strain_base, ndof, radius, static_basis):
         super().__init__(tube_num, q, q_dof, max_tube_length, delta_x, strain_base)
 
         self.ndof = ndof
         self.q_big_order = [(1, 1), (2, 1), (3, 1), (2, 2), (3, 2), (3, 3)]  # how to use?
         self.stiffness_matrices = calculate_stiffness(radius)  # where to calculate?
         self.gauss_coefficients_kinematic, self.gauss_coefficients_static, self.gauss_weights = calculate_gauss()
+        self.static_basis = static_basis
         self.section_indices = None
         self.theta = None
 
@@ -87,16 +92,21 @@ class Static(Kinematic):
         self.section_indices = section_indices
         self.theta = thetas  # type: list
 
-        # if no initial_guess given, initialize array of zeros with a few other values
+        # if no initial_guess given, initialize array of zeros with 0.01 for each y, z constant bending - todo initial strain
         if initial_guess is None:
             initial_guess = np.zeros(sum(self.ndof.values()))
-            initial_guess[0] = initial_guess[9] = initial_guess[12] = 0.1
+            initial_guess[3] = initial_guess[6] = 0.01
+            initial_guess[18] = initial_guess[21] = 0.01
+            if self.tube_num == 3:
+                initial_guess[30] = initial_guess[33] = 0.01
 
         # find root using 'Levenberg-Marquardt' method
-        solution = optimize.root(self.static_equilibrium, x0=initial_guess, method='lm', options={'maxiter': 20000})
+        solution = optimize.root(self.static_equilibrium, x0=initial_guess, method='lm')
 
         solution_q = solution.x
-        print(solution_q)
+        print(np.array2string(solution_q, separator=', '))
+
+        # solution_q = initial_guess
 
         # first section
         if self.tube_num == 3:
@@ -114,7 +124,7 @@ class Static(Kinematic):
         g_32 = self.integrate_g(solution_q, np.eye(4), 3, 2)
 
         # third section
-        g_33 = self.integrate_g(solution_q, g_22[-1] @ g_31[-1] @ g_32[-1], 3, 3)
+        g_33 = self.integrate_g(solution_q, g_22[-1] @ g_31[-1] @ g_32[-1], 3, 3)  # todo check init
 
         if self.tube_num == 3:
             g_full = [g_11, g_22, g_33]
@@ -162,9 +172,7 @@ class Static(Kinematic):
         start_index = self.section_indices.get((tube_num, section_num))
 
         for i in range(start_index + 1, start_index + index_length_section):
-            _, this_g = self.half_step_integral(i + self.gauss_coefficients_kinematic[0],
-                                                i + self.gauss_coefficients_kinematic[1],
-                                                0, q, this_g, tube_num, section_num)
+            _, this_g = self.half_step_integral(i, 0, q, this_g, tube_num, section_num)
             collect_g.append(this_g)
 
         return collect_g
@@ -224,7 +232,7 @@ class Static(Kinematic):
             return np.concatenate((intc_1, intg_21, intg_31 - intg_312, intc_2, intg_32, intc_3))
 
         elif self.tube_num == 2:  # only need second and third sections
-            _, intc_2, intg_32, intc_3 = self.equilibrium_two(q, np.zeros((6, 1)), np.eye(4))
+            _, intc_2, intg_32, intc_3 = self.equilibrium_two(q, np.zeros((6, 2)), np.eye(4))
             return np.concatenate((intc_2, intg_32, intc_3))
 
         else:
@@ -265,22 +273,18 @@ class Static(Kinematic):
         for i in range(index_length_section_1):
             index_adjusted = [i + self.section_indices.get((j, 1)) for j in range(1, 4)]
 
-            bc11_here = get_basis(index_adjusted[0], self.delta_x, 1, 1, self.strain_base, self.q_dof, self.tube_num)
-            bg21_here = get_basis(index_adjusted[1], self.delta_x, 2, 1, self.strain_base, self.q_dof, self.tube_num)
-            bg31_here = get_basis(index_adjusted[2], self.delta_x, 3, 1, self.strain_base, self.q_dof, self.tube_num)
+            bc11_here = self.static_basis.get_basis(i, 1, 1, self.theta)
+            bg21_here = self.static_basis.get_basis(i, 2, 1, self.theta)
+            bg31_here = self.static_basis.get_basis(i, 3, 1, self.theta)
 
             ksi_1_here = bc11_here @ q_1[0] + self.strain_bias
-            ksi_21_here = bg21_here @ q_1[1]
+            ksi_g_21_here = bg21_here @ q_1[1]
             ksi_31_here = bg31_here @ q_1[2]
             coadj_ksi_1_here = little_coadjoint(ksi_1_here)
 
             if i != 0:
-                sg21, gg21 = self.half_step_integral(index_adjusted[1] + self.gauss_coefficients_kinematic[0],
-                                                     index_adjusted[1] + self.gauss_coefficients_kinematic[1], sg21,
-                                                     q_1[1], gg21, 2, 1)
-                sg31, gg31 = self.half_step_integral(index_adjusted[2] + self.gauss_coefficients_kinematic[0],
-                                                     index_adjusted[2] + self.gauss_coefficients_kinematic[1], sg31,
-                                                     q_1[2], gg31, 3, 1)
+                sg21, gg21 = self.half_step_integral(i, sg21, q_1[1], gg21, 2, 1)
+                sg31, gg31 = self.half_step_integral(i, sg31, q_1[2], gg31, 3, 1)
 
             adj_g21_here = big_adjoint(gg21)
             adj_g31_here = big_adjoint(gg31)
@@ -288,9 +292,9 @@ class Static(Kinematic):
             coadj_g31_here = big_coadjoint(gg31)
 
             # diff
-            ksi_21_here = np.linalg.inv(adj_g21_here) @ ksi_1_here + ksi_21_here
+            ksi_21_here = np.linalg.inv(adj_g21_here) @ ksi_1_here + ksi_g_21_here
             ksi_31_here = np.linalg.inv(adj_g31_here) @ np.linalg.inv(
-                adj_g21_here) @ ksi_1_here + np.linalg.inv(adj_g31_here) @ ksi_21_here + ksi_31_here
+                adj_g21_here) @ ksi_1_here + np.linalg.inv(adj_g31_here) @ ksi_g_21_here + ksi_31_here
 
             fi_11_here = self.stiffness_matrices[0] @ (
                     ksi_1_here - self.get_ksi_star(index_adjusted[0], 1, self.q[0]))
@@ -351,7 +355,10 @@ class Static(Kinematic):
         sg312 = sg31
 
         # need 32: eye, 31: 31_previous
-        gg32 = np.eye(4)
+        if self.tube_num == 2:
+            gg32 = eye_from_theta(self.theta[1])
+        else:
+            gg32 = np.eye(4)
         # gg31 = previous gg31
         adj_g31_here = big_adjoint(gg31)
         coadj_g31_here = big_coadjoint(gg31)
@@ -362,8 +369,8 @@ class Static(Kinematic):
             index_adjusted = [i + self.section_indices.get((j, 2)) for j in range(2, 4)]
 
             # need 2, 32
-            bc22_here = get_basis(index_adjusted[0], self.delta_x, 2, 2, self.strain_base, self.q_dof, self.tube_num)
-            bg32_here = get_basis(index_adjusted[1], self.delta_x, 3, 2, self.strain_base, self.q_dof, self.tube_num)
+            bc22_here = self.static_basis.get_basis(i, 2, 2, self.theta)
+            bg32_here = self.static_basis.get_basis(i, 3, 2, self.theta)
 
             # need 2, 32
             ksi_2_here = bc22_here @ q_2[0] + self.strain_bias
@@ -371,9 +378,7 @@ class Static(Kinematic):
             coadj_ksi_2_here = little_coadjoint(ksi_2_here)
 
             if i != 0:
-                sg32, gg32 = self.half_step_integral(index_adjusted[1] + self.gauss_coefficients_kinematic[0],
-                                                     index_adjusted[1] + self.gauss_coefficients_kinematic[1],
-                                                     sg32, q_2[1], gg32, 3, 2)
+                sg32, gg32 = self.half_step_integral(i, sg32, q_2[1], gg32, 3, 2)
 
             # only 32
             adj_g32_here = big_adjoint(gg32)
@@ -417,7 +422,7 @@ class Static(Kinematic):
         for i in range(index_length_section_3):
             index_adjusted = i + self.section_indices.get((3, 3))
 
-            bc3_here = get_basis(index_adjusted, self.delta_x, 3, 3, self.strain_base, self.q_dof, self.tube_num)
+            bc3_here = self.static_basis.get_basis(i, 3, 3, self.theta)
 
             ksi_3_here = bc3_here @ q_3 + self.strain_bias
             fi_33_here = self.stiffness_matrices[self.tube_num - 1] @ (
@@ -450,9 +455,11 @@ class Static(Kinematic):
             The output integral with dof elements
         """
         length = (num_points - 1) * self.delta_x
+        if length == 0:
+            return np.zeros(ndof)
         x_vals = np.linspace(0, length, num_points)
         integral_collect = np.zeros((5, ndof))
-        for i in range(ndof):
+        for i in range(ndof):  # todo allow for single (interp doesn't work)
             interp_function = interpolate.interp1d(x_vals, ar_int[:, i])
             this_iteration = [interp_function(val * length) for val in constants]
             integral_collect[:, i] = this_iteration
@@ -462,15 +469,12 @@ class Static(Kinematic):
         iteration_out = length / 2 * combine2.sum(0)
         return iteration_out
 
-    def half_step_integral(self, step1, step2, sg, this_q, gg, tube_number, section_number):
+    def half_step_integral(self, section_index, sg, this_q, gg, tube_number, section_number):
         """Integrate gg using two steps.
 
         Parameters
         ----------
-        step1 : float
-            first point to use for integration
-        step2 : float
-            second point to use for integration
+        section_index
         sg : np.ndarray or int
             ???
         this_q : np.ndarray
@@ -488,12 +492,10 @@ class Static(Kinematic):
             -- output sg matrix (6x1 matrix)
             -- output g matrix (4x4 SE(3))
         """
-        bg_here1 = get_basis(step1, self.delta_x, tube_number,
-                             section_number, self.strain_base,
-                             self.q_dof, self.tube_num)
-        bg_here2 = get_basis(step2, self.delta_x, tube_number,
-                             section_number, self.strain_base,
-                             self.q_dof, self.tube_num)
+        step1 = section_index + self.gauss_coefficients_kinematic[0] - 1
+        step2 = section_index + self.gauss_coefficients_kinematic[1] - 1
+        bg_here1 = self.static_basis.get_basis(step1, tube_number, section_number, self.theta)
+        bg_here2 = self.static_basis.get_basis(step2, tube_number, section_number, self.theta)
         sg = sg + (self.delta_x / 2) * (bg_here1 + bg_here2)
 
         if tube_number == section_number:
@@ -535,57 +537,6 @@ class Static(Kinematic):
         return base_here @ q + self.strain_bias
 
 
-def get_basis(index, dx, this_tube_num, tube_section, strain_bases, dof, num_tubes):
-    """Get the full basis for the given parameters.
-
-    Parameters
-    ----------
-    index : float
-        the index along the tube to retrieve the basis for
-    dx : float
-        the delta x of the model
-    this_tube_num : int
-        the number of this tube (3 corresponds to the smallest tube and 2 to
-        the second smallest, regardless of total tube number)
-    tube_section : int
-        the required section (again, 3 -> smallest tube)
-    strain_bases : list[function]
-        pr
-    dof : list[int]
-    num_tubes : int
-
-    Returns
-    -------
-    np.ndarray
-        the desired basis
-
-    Notes
-    -----
-    Can be extended to allow for different types (or orders) of bases.
-    """
-    x_val = index * dx
-    this_strain_base = strain_bases[this_tube_num + num_tubes - 4]
-    if this_tube_num == tube_section:
-        if this_tube_num == 3:
-            base = this_strain_base(x_val, dof[num_tubes - 1])
-        else:
-            base = np.zeros((6, 12))
-            base[0, 0] = base[1, 4] = base[2, 8] = 1
-            base[0, 1] = base[1, 5] = base[2, 9] = x_val
-            base[0, 2] = base[1, 6] = base[2, 10] = x_val ** 2
-            base[0, 3] = base[1, 7] = base[2, 11] = x_val ** 3
-            # base[0, 4] = base[1, 9] = base[2, 14] = x_val ** 4
-    else:
-        base = np.zeros((6, 4))
-        base[0, 0] = 1
-        base[0, 1] = x_val
-        base[0, 2] = x_val ** 2
-        base[0, 3] = x_val ** 3
-        # base[0, 4] = x_val ** 4
-
-    return base
-
-
 def calculate_stiffness(radii):
     """Calculates the stiffness matrices for the given radii.
 
@@ -605,9 +556,9 @@ def calculate_stiffness(radii):
     area = [pi * (o ** 2 - i ** 2) for o, i in zip(r_out, r_in)]
     # Jy = Jz
     polar_mom = [pi / 4 * (o ** 4 - i ** 4) for o, i in zip(r_out, r_in)]
-    mom_inertia = polar_mom * 2
-    e = 58e9  # 60e9
-    g = 21.5e9  # 23.1e9
+    mom_inertia = [pol * 2 for pol in polar_mom]
+    e = 60e6  # 58e6 # kg mm^-1 s^-2
+    g = 23.1e6  # 21.5e6
 
     return [np.diag(np.asarray([g * i, e * j, e * j, e * a, g * a, g * a])) for
             i, j, a in zip(mom_inertia, polar_mom, area)]

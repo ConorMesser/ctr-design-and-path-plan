@@ -4,8 +4,9 @@ import numpy as np
 
 from .model import Model
 from .kinematic import Kinematic
-from .static import Static, get_basis
+from .static import Static
 from .strain_bases import get_strains
+from .static_bases import StaticBasis
 
 
 def create_model(configuration, q) -> Model:
@@ -57,28 +58,20 @@ def create_model(configuration, q) -> Model:
     else:  # given as list
         lengths = config_lengths
 
+    delta_x = configuration.get('delta_x')
+
     if name == "kinematic":
-        return Kinematic(tube_num, output_q, output_q_dof, lengths, configuration.get('delta_x'), strain_bases)
+        return Kinematic(tube_num, output_q, output_q_dof, lengths, delta_x, strain_bases)
     elif name == "static":
         # radii
         radii = configuration.get('tube_radius')
 
-        # ndof
-        if tube_num == 3:
+        this_static_basis = StaticBasis(delta_x, configuration.get('degree'),
+                                        strain_bases, tube_num, output_q_dof,
+                                        configuration.get('basis_type'))
+        ndof = this_static_basis.get_static_dof()
 
-            dof_11 = len(get_basis(1, 1, 1, 1, strain_bases, output_q_dof, tube_num)[0, :])
-            dof_21 = len(get_basis(1, 1, 2, 1, strain_bases, output_q_dof, tube_num)[0, :])
-            dof_31 = len(get_basis(1, 1, 3, 1, strain_bases, output_q_dof, tube_num)[0, :])
-        elif tube_num == 2:
-            dof_11 = dof_21 = dof_31 = 0
-        else:
-            raise ValueError(f'The static model does not support {tube_num} tubes.')
-        dof_22 = len(get_basis(1, 1, 2, 2, strain_bases, output_q_dof, tube_num)[0, :])
-        dof_32 = len(get_basis(1, 1, 3, 2, strain_bases, output_q_dof, tube_num)[0, :])
-        dof_33 = len(get_basis(1, 1, 3, 3, strain_bases, output_q_dof, tube_num)[0, :])
-        ndof = {(1, 1): dof_11, (2, 1): dof_21, (3, 1): dof_31, (2, 2): dof_22, (3, 2): dof_32, (3, 3): dof_33}
-
-        return Static(tube_num, output_q, output_q_dof, lengths, configuration.get('delta_x'), strain_bases, ndof, radii)
+        return Static(tube_num, output_q, output_q_dof, lengths, delta_x, strain_bases, ndof, radii, this_static_basis)
     else:
         raise UserWarning(f"{name} is not a defined model. "
                           f"Change config file.")

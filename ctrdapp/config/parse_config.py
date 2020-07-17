@@ -38,7 +38,8 @@ def parse_config(file):
                        "tube_lengths", "single_tube_control"],
                "rrt_star": ["step_bound", "iteration_number", "tube_lengths"]}
     models = {"kinematic": ["q_dof", "delta_x", "tube_lengths", "strain_bases"],
-              "static": ["q_dof", "delta_x", "tube_lengths", "strain_bases"]}
+              "static": ["q_dof", "delta_x", "tube_lengths", "strain_bases",
+                         "basis_type", "degree"]}
     heuristics = {"square_obstacle_avg_plus_weighted_goal": ["goal_weight"],
                   "only_goal_distance": [],
                   "follow_the_leader": ["only_tip"],
@@ -69,7 +70,9 @@ def parse_config(file):
                 "optimize_iterations": 50,
                 "only_tip": True,
                 "insertion_weight": 10,
-                "strain_bases": ["constant", "constant"]
+                "strain_bases": ["constant", "constant"],
+                "basis_type": "last_strain_base",
+                "degree": 2
                 }
 
     with file.open(mode='r') as fid:
