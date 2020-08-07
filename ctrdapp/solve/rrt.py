@@ -38,12 +38,21 @@ class RRT(Solver):
         """int : number of iterations"""
         self.step_bound = configuration.get("step_bound")
         """float : maximum step size (from nearest neighbor) for new config"""
-        self.rotation_max = 0.8  # 0.1745  # 10 degrees in either direction todo make this variable based on insertion?
+        self.rotation_max = 0.5  # 0.1745  # 10 degrees in either direction todo make this variable based on insertion?
         """float : maximum rotation from nearest neighbor, in Radians"""
-        self.insert_max = configuration.get("tube_lengths")
-        """float : maximum tube/insertion length"""
+
         self.single_tube_control = configuration.get("single_tube_control")
         """boolean : can only one tube be controlled (inserted/rotated) per step?"""
+
+        length_sum = 0
+        max_insertion = []
+        tube_lengths = configuration.get("tube_lengths")
+        for i in range(self.tube_num):
+            max_insertion.append(tube_lengths[i] - length_sum)
+            length_sum = tube_lengths[i]
+
+        self.insert_max = max_insertion  # todo change if max insertion differs based on current
+        """float : maximum tube/insertion length"""
 
         # initial heuristic is not used (generation is set as 0)
         ftl = []
@@ -198,7 +207,7 @@ class RRT(Solver):
     def visualize_from_index(self, index, objects_file, output_dir, filename):
         g_out, insert, rotate, insert_indices = self.get_path(index)
         g_out_flat = g_out[0]
-        visualize_curve_single(g_out_flat, objects_file, self.tube_num, self.tube_rad, output_dir, filename)
+        visualize_curve_single(g_out_flat, objects_file, self.tube_num, self.tube_rad, output_dir, filename)  # todo user visual
 
     def visualize_from_index_path(self, index, objects_file, output_dir, filename):
         g_out, insert, rotate, insert_indices = self.get_path(index)

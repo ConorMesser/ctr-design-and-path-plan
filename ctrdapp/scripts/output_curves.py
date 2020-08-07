@@ -24,8 +24,11 @@ def main():
                       -2.14492224e-01,  2.81060637e-03, -1.10926421e-05,  1.30145562e-08,
                       3.00000000e-02])
 
+    try_q = np.zeros(13)
+    try_q[3] = try_q[6] = try_q[12] = 0.01
+
     # todo get input from user
-    this_g = this_model.solve_g(indices=[15, 34], thetas=[0, 0])  # , full=True) initial_guess=try_q)
+    this_g = this_model.solve_g(indices=[0], thetas=[0], full=True)  # , initial_guess=try_q)  # , full=True) initial_guess=try_q)
     # g_filename = output_path / "g_curves.txt"
     # save_g_positions(this_g, g_filename)
 

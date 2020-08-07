@@ -38,9 +38,36 @@ class NelderMead(Optimizer):
         if radius[0] == 5:  # large radius for single_tube ftl experiment
             radius = [0.9]
 
-        init_simplex = calculate_simplex(self.configuration.get('strain_bases'), radius,
-                                         self.configuration.get('tube_lengths'), self.configuration.get('q_dof'),
-                                         self.initial_guess)
+        # init_simplex = calculate_simplex(self.configuration.get('strain_bases'), radius,
+        #                                  self.configuration.get('tube_lengths'), self.configuration.get('q_dof'),
+        #                                  self.initial_guess)
+        init_simplex = [[0.02, 0.02, -0.0005, 0.02, 0.0002, 0.01, 0.02, 0.0002, 0.01, -0.0002],
+                        [0.02, 0.03, 0, 0.01, 0, 0.01, 0.02, 0, 0.02, 0],
+                        [0.04, 0.02, -0.0004, 0.01, 0, 0, 0.03, -0.0003, 0.01, 0],
+                        [0.01, 0.04, -0.0001, 0.03, -0.0002, 0.05, 0.02, 0.0003, 0, -0.0003],
+                        [0, 0.04, -0.0008, 0, 0, 0, 0.02, 0.0003, 0, 0],
+                        [0, 0.02, 0.0004, 0, 0, 0, 0.03, -0.0005, 0, 0],
+                        [0, 0.03, -0.0008, 0.02, 0.0002, 0, 0, 0, 0.02, 0],
+                        [0, 0.01, -0.0004, 0, 0, 0, 0.02, 0.0001, 0, 0.0003],
+                        [0, 0.01, -0.0001, 0.01, 0.0002, 0, 0.01, 0.0002, 0.01, -0.001],
+                        [0, 0.04, -0.0003, 0.04, -0.0001, 0, 0.04, 0.0002, 0.01, 0],
+                        [0, 0.03, 0, 0, 0, 0, 0.005, 0, 0, 0]]  # todo
+
+        # init_simplex = [[0.02, 0.0005, 0.04, 0.001, 0.00001, 0.02, 0.0003, 0.00001],
+        #                 [0.02, 0, 0.04, 0.001, 0.00001, 0.02, 0.0003, 0.00001],
+        #                 [0.02, 0.0005, 0.04, 0.001, 0, 0.02, 0.0003, 0.00001],
+        #                 [0.02, 0.0005, 0.04, 0.001, 0.00001, 0.02, 0, 0.00001],
+        #                 [0.02, 0.0005, 0.04, 0.001, 0.00001, 0.02, 0.0003, 0],
+        #                 [0.02, 0, 0.04, 0, 0, 0.02, 0.0002, 0.00001],
+        #                 [0.02, 0, 0.03, 0.001, 0.000003, 0.02, 0, 0],
+        #                 [0, 0, 0.04, 0.001, 0.00001, 0.02, 0, 0.00001],
+        #                 [0.02, 0.000005, 0.03, 0.00001, 0.0000003, 0.02, 0.00001, 0.0000002]]
+
+        # init_simplex = [[0.05, 0.0375, 0.025],
+        #                 [0.055, 0.04, 0.035],
+        #                 [0.04, 0.045, 0.02],
+        #                 [0.035, 0.05, 0.03]]
+
         print(init_simplex)
         # alter_simplex = input("Would you like to alter the simplex? (yes/no): ")
         # if alter_simplex == 'yes':
@@ -58,8 +85,8 @@ class NelderMead(Optimizer):
         # todo allow for either initial guess or init_simplex
         optimize_result_nm = optimize.minimize(func, self.initial_guess,
                                                method='Nelder-Mead',
-                                               options={'xatol': self.precision,
-                                                        'fatol': self.precision,
+                                               options={'fatol': self.precision,
+                                                        'xatol': self.precision,
                                                         'initial_simplex': init_simplex,
                                                         'maxfev': self.configuration.get('optimize_iterations')})
         end_time = time.time()
@@ -106,7 +133,7 @@ class NelderMead(Optimizer):
             self.best_solver = {'cost': cost, 'solver': this_solver}
 
         self.count += 1
-        print(self.count)
+        print(f'{self.count} - Cost: {cost}, Solution: {this_solver.found_solution}, Q: {x}')
 
         return cost
 

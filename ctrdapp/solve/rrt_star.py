@@ -49,8 +49,8 @@ class RRTStar(RRT):
                     delta_ins_neighbor = [t - p for t, p in zip(true_insertion, ins_neighbor)]
                     delta_rot_neighbor = [get_delta_rotation(p, t) for p, t in zip(rot_neighbor, new_rotation)]
                     _, _, _, _, ftl_neighbor = self.model.solve_integrate(delta_rot_neighbor, delta_ins_neighbor,
-                                                                          new_rotation, true_insertion, g_neighbor)
-                    # todo don't calculate g_out unnecessarily
+                                                                          new_rotation, true_insertion, g_neighbor,
+                                                                          need_g_out=False)
 
                 new_neighbor_heuristic = self.heuristic_factory.create(min_obstacle_distance=obs_min,
                                                                        goal_distance=goal_dist,
@@ -86,13 +86,12 @@ class RRTStar(RRT):
                         delta_rot_neighbor = [get_delta_rotation(prev, to) for to, prev in zip(child_rot, new_rotation)]
 
                         _, _, _, _, ftl_neighbor = self.model.solve_integrate(delta_rot_neighbor, delta_ins_neighbor,
-                                                                              child_rot, child_ins, g_parent)
-                        # todo don't calculate g_out unnecessarily
+                                                                              child_rot, child_ins, g_parent, need_g_out=False)
 
                         new_neighbor_heuristic = self.heuristic_factory.create_from_old(current_heuristic,
                                                                                         follow_the_leader=ftl_neighbor)
                         this_neighbor_cost = new_neighbor_heuristic.test_cost_from_parent(best_heuristic)
-                        if this_neighbor_cost < this_cost:  # todo DEBUG
+                        if this_neighbor_cost < this_cost:
                             self.tree.swap_parents(ind, new_index, new_neighbor_heuristic)
 
 

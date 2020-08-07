@@ -50,8 +50,8 @@ class Kinematic(Model):
         self.q_dof = q_dof
         self.q = q
 
-    def solve_integrate(self, delta_theta, delta_insertion, this_theta,
-                        this_insertion, prev_g, invert_insert=True):
+    def solve_integrate(self, delta_theta, delta_insertion, this_theta, this_insertion, prev_g, invert_insert=True,
+                        need_g_out=True):
 
         # kinematic model is defined as s(0)=L no insertion and s=0 for full insertion
         if invert_insert:
@@ -61,10 +61,13 @@ class Kinematic(Model):
         # velocity is kept as given; it doesn't correspond to the discretization  todo impact on FTL
         velocity = [-delta_ins for delta_ins in delta_insertion]
         prev_insertion = [ins - delta for ins, delta in zip(this_insertion, delta_insertion)]
+
         prev_insert_indices, new_insert_indices = calculate_indices(prev_insertion, this_insertion,
                                                                     self.max_tube_length, self.delta_x)
-
-        g_out = self.solve_g(indices=new_insert_indices, thetas=this_theta, full=False)
+        if need_g_out:
+            g_out = self.solve_g(indices=new_insert_indices, thetas=this_theta, full=False)
+        else:
+            g_out = [[]]
         eta_out, ftl_out = self.solve_eta(velocity, prev_insert_indices, delta_theta, prev_g)
 
         if invert_insert:
@@ -216,22 +219,29 @@ def calculate_indices(prev_insertions, next_insertions, max_tube_lengths, delta_
         --the final index values for the previous insertion
         --the final index values for the next insertion
     """
-    # todo ensure can't go past origin with multiple tubes
+    # todo check - should this change based on current insertion?
+    length_sum = 0
+    min_insertion = []
+    for i in range(len(prev_insertions)):
+        min_insertion.append(length_sum)
+        length_sum = max_tube_lengths[i]
+
     prev_insert_indices = []
     new_insert_indices = []
     for n in range(len(prev_insertions)):
         max_length = max_tube_lengths[n]
+        min_length = min_insertion[n]
 
         prev_insertion = prev_insertions[n]
         next_insertion = next_insertions[n]
 
-        if prev_insertion < 0:
-            prev_insertion = 0
+        if prev_insertion < min_length:
+            prev_insertion = min_length
         elif prev_insertion > max_length:
             prev_insertion = max_length
 
-        if next_insertion < 0:
-            next_insertion = 0
+        if next_insertion < min_length:
+            next_insertion = min_length
         elif next_insertion > max_length:
             next_insertion = max_length
 

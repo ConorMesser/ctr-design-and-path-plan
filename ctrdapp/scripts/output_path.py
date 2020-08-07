@@ -12,7 +12,7 @@ def main():
 
     for i in range(1, 50):
         g_out, eta_out, new_insert_indices, true_insertions, ftl_out = \
-            this_model.solve_integrate([0], [1], [0], [i], all_curves[i-1])
+            this_model.solve_integrate([0], [1], [0], [i], all_curves[i - 1])
 
     # Small insertion w/ rotation
     # g_out, eta_out, new_insert_indices, true_insertions, ftl_out = \

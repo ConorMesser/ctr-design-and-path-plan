@@ -229,7 +229,8 @@ class TestKinematic(unittest.TestCase):
         g_test, eta_test, insert_indices, true_insertions, ftl_heuristic = self.no_strain1_rough.solve_integrate([0],
                                                                                                                  [0],
                                                                                                                  [0],
-                                                                                                                 [0], insert_none,
+                                                                                                                 [0],
+                                                                                                                 insert_none,
                                                                                                                  invert_insert=True)
         np.testing.assert_equal(g_test, insert_none)
         np.testing.assert_equal(true_insertions, [0])
@@ -273,8 +274,8 @@ class TestKinematic(unittest.TestCase):
         # Don't allow retraction past previous tube
         g_test, eta_test, insert_indices, true_insertions, ftl_heuristic = self.no_strain1_rough.solve_integrate([0],
                                                                                                                  [-0.1],
-                                                                                                                 [0],
-                                                                                                                 [-0.101],
+                                                                                                                 [0], [
+                                                                                                                     -0.101],
                                                                                                                  insert_none,
                                                                                                                  invert_insert=True)
         np.testing.assert_equal(g_test, insert_none)
@@ -297,8 +298,8 @@ class TestKinematic(unittest.TestCase):
         # zero insertion
         iter_num = 5000
         this_g = self.no_strain1_rough.solve_g([2], [0], full=True)
-        time = timeit.Timer(lambda: self.no_strain1_rough.solve_integrate(
-            [0], [-0.501], [1], [0.499], this_g, invert_insert=False)).timeit(iter_num)
+        time = timeit.Timer(lambda: self.no_strain1_rough.solve_integrate([0], [-0.501], [1], [0.499], this_g,
+                                                                          invert_insert=False)).timeit(iter_num)
         self.assertLess(time/iter_num, 0.0004)
 
     def test_solve_g_speed(self):
