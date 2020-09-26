@@ -38,7 +38,7 @@ class RRT(Solver):
         """int : number of iterations"""
         self.step_bound = configuration.get("step_bound")
         """float : maximum step size (from nearest neighbor) for new config"""
-        self.rotation_max = 0.5  # 0.1745  # 10 degrees in either direction todo make this variable based on insertion?
+        self.rotation_max = configuration.get("rotation_max")  # todo make this variable based on insertion?
         """float : maximum rotation from nearest neighbor, in Radians"""
 
         self.single_tube_control = configuration.get("single_tube_control")
