@@ -55,7 +55,8 @@ class Static(Kinematic):
     static_basis : StaticBasis
         class defining how to calculate the basis for the static equilibrium
     """
-    def __init__(self, tube_num, q, q_dof, max_tube_length, delta_x, strain_base, ndof, radius, static_basis):
+    def __init__(self, tube_num, q, q_dof, max_tube_length, delta_x, strain_base, ndof, radius, static_basis,
+                 init_guess):
         super().__init__(tube_num, q, q_dof, max_tube_length, delta_x, strain_base)
 
         self.ndof = ndof
@@ -65,6 +66,7 @@ class Static(Kinematic):
         self.static_basis = static_basis
         self.section_indices = None
         self.theta = None
+        self.general_init_guess = init_guess
 
     def solve_g(self, indices=None, thetas=None, initial_guess=None, full=False):
         if indices is None:  # default to zero insertion, with s(0) = L
@@ -94,23 +96,15 @@ class Static(Kinematic):
 
         # if no initial_guess given, initialize array of zeros with 0.01 for each y, z constant bending - todo initial strain
         if initial_guess is None:
-            initial_guess = np.zeros(sum(self.ndof.values()))
-            initial_guess[3] = 0.04
-            initial_guess[6] = 0.03
-            initial_guess[9] = 0.05
-            initial_guess[10] = 0.02
-            initial_guess[11] = 0.0003
-            initial_guess[12] = 0.03
-            initial_guess[13] = -0.001
-            # initial_guess[18] = initial_guess[21] = 0.01
-            # if self.tube_num == 3:
-            #     initial_guess[30] = initial_guess[33] = 0.01
+            initial_guess = self.general_init_guess
 
-        # find root using 'Levenberg-Marquardt' method
-        solution = optimize.root(self.static_equilibrium, x0=initial_guess, method='lm')
+        # find root using MINPACKS hybrd and hybrj routines (modified Powell method)
+        solution = optimize.root(self.static_equilibrium, x0=initial_guess, method='hybr')
 
         solution_q = solution.x
-        # print(np.array2string(solution_q, separator=', '))
+        print(solution.nfev)
+        print(np.array2string(solution_q, separator=', '))
+        print('\n')
 
         # first section
         if self.tube_num == 3:

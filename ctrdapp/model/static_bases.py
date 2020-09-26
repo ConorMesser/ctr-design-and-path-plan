@@ -8,13 +8,14 @@ from ctrdapp.model.matrix_utils import big_adjoint
 
 class StaticBasis:
 
-    def __init__(self, delta_x, degree, strain_base, tube_num, q_dof, basis_type):
+    def __init__(self, delta_x, degree, strain_base, tube_num, q_dof, basis_type, output_q):
         self.delta_x = delta_x
         self.degree = degree
         self.strain_base = strain_base
         self.tube_num = tube_num
         self.q_dof = q_dof
         self.basis_type = basis_type
+        self.q = output_q
 
     def get_basis(self, section_index, this_tube_num, tube_section, section_indices, theta):
         """Get the full basis for the given parameters.
@@ -137,3 +138,33 @@ class StaticBasis:
 
         return {(1, 1): dof_11, (2, 1): dof_21, (3, 1): dof_31,
                 (2, 2): dof_22, (3, 2): dof_32, (3, 3): dof_33}
+
+    def get_init_vals(self):
+        ndof = self.get_static_dof()
+        init_guess = np.zeros(sum(ndof.values()) - ndof.get((3, 3)))
+
+        set_value = 0.01
+        degree_size = self.degree + 1
+
+        if self.basis_type == 'all_strain_bases':  # todo fix for two-tube
+            # (Degree, 1, 1, 1, Degree, Degree), Degree, 1, 1, Degree, 3rd base
+
+            indices = np.asarray([0, degree_size, degree_size + 1, degree_size + 2,
+                                  degree_size + 3, degree_size * 2 + 3,
+                                  degree_size * 3 + 3, degree_size * 3 + 4,
+                                  degree_size * 3 + 5, degree_size * 3 + 6])
+        else:
+            first_tubes = sum(ndof.values()) - ndof.get((3, 3))
+            indices = np.arange(0, first_tubes, degree_size)
+
+        for ind in indices:
+            init_guess[ind] = set_value
+        if self.basis_type == 'all_strain_basis' or self.basis_type == 'last_strain_base':
+            init_guess = np.append(init_guess, self.q[-1])
+        else:
+            init_guess = np.append(init_guess, [set_value])
+            init_guess = np.append(init_guess, np.zeros(degree_size - 1))
+
+        return init_guess
+
+
