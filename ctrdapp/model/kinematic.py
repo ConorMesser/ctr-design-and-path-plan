@@ -128,12 +128,14 @@ class Kinematic(Model):
 
         return g_out
 
-    def solve_eta(self, velocity_list, prev_insert_indices_list,  # todo use halfway point for eta/ftl?
-                  delta_theta_list, prev_g):
+    def solve_eta(self, velocity_list, prev_insert_indices_list, delta_theta_list, prev_g, curr_g):
         """Calculates eta and follow_the_leader array for given parameters.
 
         Parameters
         ----------
+        curr_g : list[list[np.ndarray]]
+            g values for each tube,
+            where g_out[tube number] = [4x4 SE3 array]
         velocity_list : list[float]
             velocity (delta s) for each tube, previous - current(/new)
         prev_insert_indices_list : list[int]
