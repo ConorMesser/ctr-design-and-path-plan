@@ -58,8 +58,6 @@ class Kinematic(Model):
             this_insertion = [length - ins for ins, length in zip(this_insertion, self.max_tube_length)]
             delta_insertion = [-delta_ins for delta_ins in delta_insertion]
 
-        # velocity is kept as given; it doesn't correspond to the discretization  todo impact on FTL
-        velocity = [-delta_ins for delta_ins in delta_insertion]
         prev_insertion = [ins - delta for ins, delta in zip(this_insertion, delta_insertion)]
 
         prev_insert_indices, new_insert_indices = calculate_indices(prev_insertion, this_insertion,
@@ -68,7 +66,10 @@ class Kinematic(Model):
             g_out = self.solve_g(indices=new_insert_indices, thetas=this_theta, full=False)
         else:
             g_out = [[]]
-        eta_out, ftl_out = self.solve_eta(velocity, prev_insert_indices, delta_theta, prev_g)
+
+        # calculating velocity based on actual indices (modified for discretization)
+        velocity = [(prev_i - new_i) * self.delta_x for new_i, prev_i in zip(new_insert_indices, prev_insert_indices)]
+        eta_out, ftl_out = self.solve_eta(velocity, prev_insert_indices, delta_theta, prev_g, g_out)
 
         if invert_insert:
             true_insertions = [length - (ind * self.delta_x) for ind, length in
@@ -164,8 +165,10 @@ class Kinematic(Model):
             # todo limit max delta_theta
             velocity_sum = velocity_sum + velocity_list[n]
 
+            mid_point_x = prev_insert_indices_list[n] * self.delta_x - velocity_list[n] / 2
+
             ksi_here = self.strain_base[n](
-                self.delta_x * prev_insert_indices_list[n], self.q_dof[n]) @ self.q[n] + self.strain_bias
+                mid_point_x, self.q_dof[n]) @ self.q[n] + self.strain_bias
 
             # Adjoint of this tube's g_initial puts eta in spatial (world) frame
             eta_tr1 = big_adjoint(prev_g[n][0]) * delta_theta_list[n] @ x_axis_unit
