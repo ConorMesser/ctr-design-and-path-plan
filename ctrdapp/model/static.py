@@ -134,10 +134,32 @@ class Static(Kinematic):
         self.theta = None
         return g_full
 
-    def solve_eta(self, velocity_list, prev_insert_indices_list,
-                  delta_theta_list, prev_g):
-        # print('Eta not yet supported by static model')
-        eta_out = ftl_out = [[np.zeros(6)]]
+    def solve_eta(self, velocity_list, prev_insert_indices_list, delta_theta_list, prev_g, curr_g):  # todo test
+        ftl_out = []
+        eta_out = []
+        eta_previous_tube = np.zeros(6)
+        for i in range(self.tube_num):
+            current_length = len(curr_g[i])
+            last_length = len(prev_g[i])
+            index_range = range(max(0, current_length - last_length),
+                                current_length)
+            index_adjustment = last_length - current_length
+            this_ftl_heuristic = []
+
+            # todo how to calculate screw from curr_g/prev_g difference
+            eta_here = [eta_previous_tube + curr_g[i][index_range[0]] - prev_g[i][index_range[0] + index_adjustment]]
+
+            for x in index_range:
+                g_prime = curr_g[i][x] - prev_g[i][x + index_adjustment]
+                this_g = prev_g[i][x + index_adjustment]
+                eta_r_local = big_adjoint(np.linalg.inv(this_g)) @ eta_here[0]
+                ftl_here = eta_r_local - g_prime
+                this_ftl_heuristic.append(ftl_here)
+
+            ftl_out.append(this_ftl_heuristic)
+            eta_out.append(eta_here)
+
+        eta_out = [[np.zeros(6)]]
         return eta_out, ftl_out
 
     def integrate_g(self, solution, initial_g, tube_num, section_num):
@@ -464,7 +486,6 @@ class Static(Kinematic):
             integral_collect[:, i] = list(this_iteration)
 
         combine = map(lambda w, integ: w * integ, weights, integral_collect)
-        # combine = [w * integ for w, integ in zip(weights, integral_collect)]
         combine2 = np.asarray(list(combine))
         iteration_out = length / 2 * combine2.sum(0)
         return iteration_out
