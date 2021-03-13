@@ -122,18 +122,32 @@ class RRT(Solver):
                              new_heuristic, this_g, insert_indices)  # todo implement lazy insert/collision check
 
     def calc_new_random_config(self):
-        # choose random config limited by the max insertion distance
+        """Choose random config limited by the max insertion distance
+
+        Returns
+        -------
+        (list[float]; list[float]; list[float]; list[float]; int, list[list[np.ndarray]])
+            change in theta values for each tube
+            change in insertion values for each tube
+            rotation values for each tube
+            insertion values for each tube
+            4x4 SE3 g values for each tube from s to L of the previous insertion
+        """
         tube_control_params = []
         for i in range(self.tube_num):
+            # tube_control_params given as alternating:
+            # [insertion_0, rotation_0, insertion_1, ..., insertion_n, rotation_n]
             tube_control_params.append(random() * self.insert_max[i])
             tube_control_params.append(random() * 2 * pi)
 
+        # find nearest neighbor to this random control point
         insert_neighbor, rotation_neighbor, neighbor_index, neighbor_parent = self.tree.nearest_neighbor(tube_control_params)
         if self.single_tube_control:
             tube_control_params, controlled_tube_num = get_single_tube_value(
                 tube_control_params, insert_neighbor, rotation_neighbor, neighbor_parent, 0.8, random())
         new_insert = step(insert_neighbor, tube_control_params, sqrt(self.step_bound))
-        new_rotation, delta_rotation = step_rotation(rotation_neighbor, tube_control_params, sqrt(self.step_bound)*self.rotation_max/self.step_bound)
+        new_rotation, delta_rotation = step_rotation(rotation_neighbor, tube_control_params,
+                                                     sqrt(self.step_bound)*self.rotation_max/self.step_bound)
         delta_insert = [new - old for new, old in zip(new_insert, insert_neighbor)]
         g_neighbor = self.tree.nodes[neighbor_index].g_curves
 
@@ -159,16 +173,6 @@ class RRT(Solver):
         return best_cost, best_index
 
     def save_best_solution(self, output_dir):
-        """
-
-        Parameters
-        ----------
-        output_dir : pathlib.PosixPath
-
-        Returns
-        -------
-
-        """
         filename = output_dir / "solution_path.txt"
         solution_file = open(filename, "w")
         # with filename.open('w') as solution_file:
@@ -241,6 +245,24 @@ class RRT(Solver):
                            solution_list, self.tree.at_goal, cost_list)
 
     def _tree_search_recur(self, child_index, parent_data, tube_num):
+        """Helper recursive function for searching the whole tree.
+
+        Parameters
+        ----------
+        child_index : int
+            Index of the child node
+        parent_data : list[float]
+            Parent node's insertion and rotation data for this tube_num
+        tube_num : int
+            Desired tube number
+        Returns
+        -------
+        (list[list[float]]; list[list[float]]; list[int]; list[float])
+            List of recursive parent's (from) data
+            List of recursive child's (to) data
+            List of node indices
+            List of node costs
+        """
 
         this_child = self.tree.nodes[child_index]
         from_list = [parent_data]
@@ -252,7 +274,7 @@ class RRT(Solver):
         if not this_child.children:
             return from_list, to_list, node_list, cost_list
         else:
-            for ind in this_child.children:
+            for ind in this_child.children:  # recur over children of this node and append the output
                 children_from, children_to, children_nodes, children_costs = self._tree_search_recur(
                     ind, child_data, tube_num)
                 from_list = from_list + children_from

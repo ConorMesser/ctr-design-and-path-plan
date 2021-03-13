@@ -9,6 +9,19 @@ import matplotlib.pyplot as plt
 
 
 def parse_json(object_type, init_objects_file):
+    """Parse through a environment json file to get obstacles and goal
+
+    Parameters
+    ----------
+    object_type : str
+        Class of object (either "obstacles" or "goal")
+    init_objects_file : pathlib.Path
+        json file declaring all the objects
+
+    Returns
+    -------
+
+    """
     f = init_objects_file.open()
     full_json = json.load(f)
     f.close()
@@ -20,7 +33,7 @@ def parse_json(object_type, init_objects_file):
         if o.get('mesh'):
             mesh_file = init_objects_file.parent / o.get('filename')
             mesh_type = mesh_file.name.split('.')[-1]
-            this_obj = pv.read(mesh_file, file_format=mesh_type.lower())  # todo currently no transform for meshes (for visualization)
+            this_obj = pv.read(mesh_file, file_format=mesh_type.lower())  # todo figure out how to add mesh transform
         elif o.get('shape') == 'Sphere':
             this_obj = pv.Sphere(radius=o.get('radius'),
                                  center=o.get('transform'))
@@ -46,9 +59,32 @@ def parse_json(object_type, init_objects_file):
 
 
 def visualize_curve(curve, objects_file, tube_num, tube_rad, output_dir, filename, visualize_from_indices=None):
+    """Save a movie showing progression of tubes in an environment
+
+    Parameters
+    ----------
+    curve : list[list[list[np.ndarray]]]
+        4X4 SE3 g values for each tube for each time point
+    objects_file : pathlib.Path
+        json file defining the objects
+    tube_num : int
+        Number of total tubes
+    tube_rad : list[float]
+        list of radii for the tubes
+    output_dir : pathlib.Path
+        directory to output the movie
+    filename : str
+        filename for the movie output
+    visualize_from_indices: list[int]
+        index from which to begin visualization for each tube; if whole tubes desired, None -> [0] * tube_num
+
+    Returns
+    -------
+    VOID
+    """
     plotter = pv.Plotter()
     full_filename = output_dir / f"{filename}.mp4"
-    plotter.open_movie(full_filename, framerate=3)  # todo
+    plotter.open_movie(full_filename, framerate=3)  # todo make smoother
 
     add_objects(plotter, objects_file)
 
@@ -71,20 +107,64 @@ def visualize_curve(curve, objects_file, tube_num, tube_rad, output_dir, filenam
 
 
 def visualize_curve_single(curve, objects_file, tube_num, tube_rad, output_dir, filename, visualize_from_indices=None):
+    """Save a picture of tubes in an environment at a certain time point
+
+    curve : list[list[np.ndarray]]
+        4X4 SE3 g values for each tube
+    objects_file : pathlib.Path
+        json file defining the objects
+    tube_num : int
+        Number of total tubes
+    tube_rad : list[float]
+        list of radii for the tubes
+    output_dir : pathlib.Path
+        directory to output the movie
+    filename : str
+        filename for the movie output
+    visualize_from_indices: list[int]
+        index from which to begin visualization for each tube; if whole tubes desired, None -> [0] * tube_num
+
+    Returns
+    -------
+
+    """
     plotter = pv.Plotter()
 
     add_objects(plotter, objects_file)
 
     _ = add_single_curve(plotter, curve, tube_num, tube_rad, visualize_from_indices)
 
-    # plotter.show()  todo
+    # plotter.show()  todo add functionality to show or save
     full_filename = output_dir / f"{filename}.pdf"
     plotter.save_graphic(full_filename)
 
 
-# todo remove visualize_from_indices
 def add_single_curve(plotter, curve, tube_num, tube_rad, visualize_from_indices, color='w', invert_insert=False):
-    if not visualize_from_indices:
+    """Helper to add a single set of curves to a pyvista Plotter
+
+    Parameters
+    ----------
+    plotter : pv.Plotter
+        The plotter object
+    curve : list[list[np.ndarray]]
+        4X4 SE3 g values for each tube
+    tube_num : int
+        Number of total tubes
+    tube_rad : list[float]
+        list of radii for the tubes
+    visualize_from_indices: list[int]
+        index from which to begin visualization for each tube; if whole tubes desired, None -> [0] * tube_num
+    color : str
+        Color compatible with pyvista color scheme
+    invert_insert : bool
+        Should the insertion values be inverted?
+
+    Returns
+    -------
+    list[pv.Plotter.actor]
+        list of actors resulting from the Plotter.add_mesh method
+    """
+    if not visualize_from_indices:  # todo remove visualize_from_indices
         visualize_from_indices = [0] * tube_num  # plot each whole tube
 
     this_tube_actor = []
@@ -114,6 +194,19 @@ def add_single_curve(plotter, curve, tube_num, tube_rad, visualize_from_indices,
 
 
 def add_objects(plotter, objects_file):
+    """Add the obstacles and goal to the given plotter
+
+    Parameters
+    ----------
+    plotter : pv.Plotter
+        The pyvista plotter for this scene
+    objects_file : pathlib.Path
+        Json file containing the object definitions
+
+    Returns
+    -------
+    VOID
+    """
     # plot obstacle mesh (with transparency)
     obstacle_meshes = parse_json('obstacles', objects_file)
     for o_m in obstacle_meshes:
@@ -130,6 +223,31 @@ def add_objects(plotter, objects_file):
 
 
 def visualize_tree(from_points, to_points, node_list, output_dir, filename, solution_list, at_goal_list, cost_list):
+    """Visualize a tree from the given point data, solution, and cost information for a single tube
+
+    Parameters
+    ----------
+    from_points : list[list[float]]
+        List of from data ([insertion, rotation])
+    to_points : list[list[float]]
+        List of to data ([insertion, rotation])
+    node_list : list[int]
+        List of node indices
+    output_dir : pathlib.Path
+        Directory for output
+    filename : str
+        Name for output file
+    solution_list : list[int]
+        List of indices from root to final node of the lowest cost solution
+    at_goal_list : list[int]
+        List of indices that reached the goal
+    cost_list : list[float]
+        List of node costs
+
+    Returns
+    -------
+    VOID
+    """
     fig, ax = plt.subplots()
 
     path_data = []

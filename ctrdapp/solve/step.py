@@ -47,6 +47,31 @@ def step(prev: [float], control_params: [float], max_bound: float) -> [float]:
 
 
 def step_rotation(prev: [float], control_params: [float], rotation_max: float):
+    """Calculate the next rotation coordinate and the angular velocity.
+
+    Given the previous rotation coordinate and the control parameters (including both linear and
+    angular velocities) and a max rotation scalar, calculates the final rotation.
+
+    Parameters
+    ----------
+    prev : [float]
+        Previous rotation values
+    control_params : [float]
+        the goal/towards point, including both insertions and rotations
+    rotation_max : float
+        Maximum rotation allowed
+
+    Returns
+    -------
+    ([float]; [float])
+        Coordinates of the final rotation; angular velocity between the previous rotation
+        coordinates and the output (in each dimension)
+
+    Raises
+    ------
+    ValueError
+        If the given previous and to vectors aren't the same size
+    """
     to = control_params[1::2]
     if len(prev) != len(to):
         raise ValueError("Given vectors are not the same dimension")
@@ -73,6 +98,20 @@ def step_rotation(prev: [float], control_params: [float], rotation_max: float):
 
 
 def get_delta_rotation(prev, to):
+    """Get the delta between these two numbers, given they are on a circular manifold [0, 2*pi].
+
+    Parameters
+    ----------
+    prev : float
+        Previous coordinate
+    to : float, [0, 2*pi]
+        Destination coordinate, [0, 2*pi]
+
+    Returns
+    -------
+    float
+        the velocity between the two coordinates
+    """
     magnitude = min(abs(to - prev), 2 * pi - abs(to - prev))
     if (to > prev and (to - prev) < pi) or (prev > to and (prev - to) > pi):
         direction = 1

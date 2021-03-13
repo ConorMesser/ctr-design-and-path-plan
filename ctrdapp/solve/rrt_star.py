@@ -75,8 +75,6 @@ class RRTStar(RRT):
                     no_cycle = self.tree.no_cycle(new_index, ind)
                 except RecursionError:
                     print(f'Recursion not working on parent: {new_index} and child: {ind}')
-
-                    x = 1
                 else:
                     if no_cycle:
                         child_ins = self.tree.nodes[ind].insertion
@@ -92,17 +90,5 @@ class RRTStar(RRT):
                         new_neighbor_heuristic = self.heuristic_factory.create_from_old(current_heuristic,
                                                                                         follow_the_leader=ftl_neighbor)
                         this_neighbor_cost = new_neighbor_heuristic.test_cost_from_parent(best_heuristic)
-                        if this_neighbor_cost < this_cost:  # todo DEBUG
+                        if this_neighbor_cost < this_cost:
                             self.tree.swap_parents(ind, new_index, new_neighbor_heuristic)
-
-
-def norm_rotation_difference(rotation_one, rotation_two):
-    diff = [r2 - r1 for r1, r2 in zip(rotation_one, rotation_two)]
-    new_diff = []
-    for d in diff:
-        pos_d = abs(d)
-        if pos_d > pi:
-            new_diff.append(2*pi - pos_d)
-        else:
-            new_diff.append(pos_d)
-    return norm(new_diff)

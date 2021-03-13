@@ -60,12 +60,12 @@ class DynamicTree:
 
         Parameters
         ----------
-        x : list of float
+        x : list[float]
             the given point
 
         Returns
         -------
-        (list of float; int; list of float) :
+        (list[float]; list[float]; int; list[float])
             array giving the insertion values of the nearest neighbor
             array giving the rotation values of the nearest neighbor
             the index of the nearest neighbor (as stored in nodes array)
@@ -154,6 +154,25 @@ class DynamicTree:
         self.kdtree.add_point(this_point)
 
     def no_cycle(self, parent_ind, child_ind):
+        """Checks whether there is a cycle formed with these parent and child nodes (indices).
+
+        Parameters
+        ----------
+        parent_ind : int
+            index of the parent node
+        child_ind : int
+            index of the child node
+
+        Returns
+        -------
+        Boolean
+            True if no cycle exists; False if there is a cycle
+
+        Raises
+        ------
+        ValueError
+            If the given parent index is the root (0)
+        """
         ancestor = self.nodes[parent_ind].parent
 
         if ancestor == child_ind:
@@ -166,17 +185,43 @@ class DynamicTree:
             return self.no_cycle(ancestor, child_ind)
 
     def reset_heuristic_all_children(self, ind):
+        """Reset the heuristic for all descendants of the given node (index)
+
+        Parameters
+        ----------
+        ind : int
+            Index of desired node
+
+        Returns
+        -------
+        VOID
+        """
         parent_heuristic = self.nodes[ind].heuristic
         children = self.nodes[ind].children
         for ch in children:
             ins = self.nodes[ch].insertion
-            init_insertion = set(ins) == {0.0}
+            init_insertion = set(ins) == {0.0}  # are all ins values equal to 0?
 
             self.nodes[ch].heuristic.calculate_cost_from_parent(parent_heuristic, reset=True,
                                                                 init_insertion=init_insertion)
             self.reset_heuristic_all_children(ch)
 
     def swap_parents(self, current_ind, new_parent_ind, new_heuristic):
+        """Give a new parent to this node.
+
+        Parameters
+        ----------
+        current_ind : int
+            Index of the node of interest
+        new_parent_ind : int
+            Index of the new parent node
+        new_heuristic : Heuristic
+            Heuristic to use with the new parent
+
+        Returns
+        -------
+        VOID
+        """
         previous_parent = self.nodes[current_ind].parent
         new_parent_heuristic = self.nodes[new_parent_ind].heuristic
         self.nodes[current_ind].heuristic = new_heuristic
@@ -224,11 +269,9 @@ class DynamicTree:
 
         Returns
         -------
-        list of list of float
+        (list[list[float]]; list[list[float]]; list[list[int]])
             list of the insertion data from child to root
-        list of list of float
             list of the rotation data from child to root
-        insert_indices : list of list of int
             corresponds to index for "origin" SE3 array for each g_curve tube
         """
 
@@ -240,6 +283,18 @@ class DynamicTree:
         return insertion, rotation, insert_indices
 
     def get_index_list(self, child_ind):
+        """Gets a list of all the node indices from this child to root
+
+        Parameters
+        ----------
+        child_ind : int
+            Index of child
+
+        Returns
+        -------
+        list[int]
+            List of all the nodes from this child to root
+        """
         i = child_ind
         index_list = [i]
         while i != 0:
@@ -271,6 +326,17 @@ class DynamicTree:
         return g_out
 
     def save_tree(self, output_dir):
+        """Save the tree in a text file, saved as tree.txt.
+
+        Parameters
+        ----------
+        output_dir : Posix.Path
+            Directory path for the tree file (not including pathname)
+
+        Returns
+        -------
+        VOID
+        """
         filename = output_dir / "tree.txt"
         tree_file = open(filename, "w")
 

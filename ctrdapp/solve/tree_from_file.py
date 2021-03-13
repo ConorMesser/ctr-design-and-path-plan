@@ -7,14 +7,21 @@ from distutils.util import strtobool
 
 
 class TreeFromFile(RRT):
+    """
+    Build a tree from a previously-generated tree text file.
+
+    Useful to re-run animations or plot new charts for an old tree.
+    """
 
     def __init__(self, model, heuristic_factory, collision_detector, configuration):
         path = pathlib.Path().absolute()
         filename = path / 'output' / configuration.get('run_identifier') / 'tree.txt'
 
         # must order nodes from file with respect to parent
-        self.node_order, self.nodes_list = order_nodes(filename)
+        self.node_order, self.nodes_list = _order_nodes(filename)
 
+        # ignore the given heuristic type, to use only a simple goal distance heuristic (transfers directly from
+        #  cost information in the tree text file
         configuration['heuristic_type'] = "only_goal_distance"
         heuristic_factory = create_heuristic_factory(configuration, {'only_goal_distance': []})
         self.delta_x = configuration.get('delta_x')
@@ -38,8 +45,23 @@ class TreeFromFile(RRT):
                          new_heuristic, this_g, insertion_indices)
 
 
-def order_nodes(file):
-    parent_list = {}
+def _order_nodes(file):
+    """Helper method to order the nodes in a file with respect to tree structure.
+
+    Assures that as the tree is built, no child node will be created before its parent.
+
+    Parameters
+    ----------
+    file : Posix.Path
+        filename for the given tree.txt
+
+    Returns
+    -------
+    (deque, list[Dict])
+        Order of the nodes, as a deque
+        List of all the nodes with their data in a dictionary
+    """
+    parent_list = {}  # dictionary from Parent -> list[child indices]
     node_list = []
     node_order = deque()
     with open(file, 'r') as tree:
@@ -65,6 +87,7 @@ def order_nodes(file):
             else:
                 curr_list.append(this_ind)
 
+    # add indices of children of root node
     queue = deque(parent_list.get(0))
     node_order.extend(parent_list.get(0))
     while queue:
@@ -75,6 +98,7 @@ def order_nodes(file):
             queue.extend(new_indices)
             for i in new_indices:
                 this_node = node_list[i]
+                # set the index for the parent of this node to it's new position in node order
                 this_node['parent'] = node_order.index(ind) + 1
 
     return node_order, node_list

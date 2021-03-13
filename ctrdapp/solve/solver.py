@@ -1,9 +1,5 @@
 from abc import ABC, abstractmethod
 
-from ..model.kinematic import Kinematic
-from ..collision.collision_checker import CollisionChecker
-from ..heuristic.heuristic_factory import HeuristicFactory
-
 
 class Solver(ABC):
     """Obtains a solution to the given path planning problem.
@@ -20,7 +16,7 @@ class Solver(ABC):
         """
         Parameters
         ----------
-        model : Kinematic
+        model : Model
             Model object containing design info for tube deformation calculation
         heuristic_factory : HeuristicFactory
             Heuristic object containing general parameters and method to create
