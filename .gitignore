@@ -112,3 +112,6 @@ configuration/*.yaml
 !configuration/config.yaml
 configuration/*.json
 !configuration/init_objects.json
+
+# idea folder
+.idea
