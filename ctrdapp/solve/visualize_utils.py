@@ -83,26 +83,32 @@ def visualize_curve(curve, objects_file, tube_num, tube_rad, output_dir, filenam
     plotter.close()
 
 
-def visualize_curve_single(curve, objects_file, tube_num, tube_rad, output_dir,
-                           filename, visualize_from_indices=None, user_adjust_view=True,
-                           camera_angle=None):
-    plotter = pv.Plotter()
+def visualize_curve_single(curve, objects_file, tube_num, tube_rad, output_dir, filename, visualize_from_indices=None,
+                           user_adjust_view=True, camera_angle=None, old_plotter=None, tube_color='g'):
+    if old_plotter is None:
+        plotter = pv.Plotter()
+        add_objects(plotter, objects_file)
+    else:
+        plotter = old_plotter
 
-    add_objects(plotter, objects_file)
-
-    _ = add_single_curve(plotter, curve, tube_num, tube_rad, visualize_from_indices)
+    _ = add_single_curve(plotter, curve, tube_num, tube_rad, visualize_from_indices, color=tube_color)
 
     full_filename = output_dir / f"{filename}.pdf"
     plotter.save_graphic(full_filename)
 
+    # todo how to change camera angle interactively without closing the plotter??
     # if user_adjust_view:
-    #     camera_angle = plotter.show()
+    #     camera_angle = plotter.show()  # when this line returns, plotter is closed
     #     visualize_curve_single(curve, objects_file, tube_num, tube_rad, output_dir, filename,
     #                            visualize_from_indices, user_adjust_view=False, camera_angle=camera_angle)
     # else:
     #     full_filename = output_dir / f"{filename}.pdf"
     #     plotter.camera_position = camera_angle
     #     plotter.save_graphic(full_filename)
+
+    return plotter
+
+
 
 
 # todo remove visualize_from_indices
@@ -148,8 +154,8 @@ def add_objects(plotter, objects_file):
         plotter.add_mesh(g_m, color='b', opacity=0.3)
 
     # plot insertion plane
-    # plane = pv.Plane(direction=[1, 0, 0], i_size=30, j_size=30)
-    # plotter.add_mesh(plane, color='tan', opacity=0.4)
+    plane = pv.Plane(direction=[1, 0, 0], i_size=30, j_size=30)
+    plotter.add_mesh(plane, color='tan', opacity=0.4)
 
 
 def visualize_tree(from_points, to_points, node_list, output_dir, filename, solution_list, at_goal_list, cost_list):
