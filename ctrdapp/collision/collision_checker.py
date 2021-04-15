@@ -1,7 +1,7 @@
 """Contains the CollisionChecker class for collision queries."""
 
 import numpy as np
-import fcl  # package name is in Pipfile "python-fcl"
+import fcl  # package name is in Pipfile "python-fcl" or "python-fcl-win32"
 from .init_collision import add_goal, add_obstacles
 from numpy.linalg import norm
 

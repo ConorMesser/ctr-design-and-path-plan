@@ -207,7 +207,8 @@ class RRT(Solver):
     def visualize_from_index(self, index, objects_file, output_dir, filename):
         g_out, insert, rotate, insert_indices = self.get_path(index)
         g_out_flat = g_out[0]
-        visualize_curve_single(g_out_flat, objects_file, self.tube_num, self.tube_rad, output_dir, filename)  # todo user visual
+        visualize_curve_single(g_out_flat, objects_file, self.tube_num, self.tube_rad, output_dir,
+                               filename)  # todo user visual
 
     def visualize_from_index_path(self, index, objects_file, output_dir, filename):
         g_out, insert, rotate, insert_indices = self.get_path(index)
