@@ -66,12 +66,13 @@ def create_model(configuration, q) -> Model:
         # radii
         radii = configuration.get('tube_radius')
 
-        this_static_basis = StaticBasis(delta_x, configuration.get('degree'),
-                                        strain_bases, tube_num, output_q_dof,
-                                        configuration.get('basis_type'))
+        this_static_basis = StaticBasis(delta_x, configuration.get('degree'), strain_bases, tube_num, output_q_dof,
+                                        configuration.get('basis_type'), output_q)
         ndof = this_static_basis.get_static_dof()
+        init_guess = this_static_basis.get_init_vals()
 
-        return Static(tube_num, output_q, output_q_dof, lengths, delta_x, strain_bases, ndof, radii, this_static_basis)
+        return Static(tube_num, output_q, output_q_dof, lengths, delta_x, strain_bases, ndof, radii, this_static_basis,
+                      init_guess)
     else:
         raise UserWarning(f"{name} is not a defined model. "
                           f"Change config file.")
