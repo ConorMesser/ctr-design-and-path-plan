@@ -325,8 +325,9 @@ class TestKinematic(unittest.TestCase):
 
         model = Kinematic(1, [np.array([0.05])], [1], [50], 0.5, strain_base)
         prev_g_out = model.solve_g([38], [0], full=False)
+        g_out = model.solve_g([36], [0], full=False)
 
-        _, ftl_out = model.solve_eta([-2], [38], [0], prev_g_out)
+        _, ftl_out = model.solve_eta([-2], [38], [0], prev_g_out, g_out)
         ftl_averages = [np.mean(array) for tube in ftl_out for array in tube]
 
         tube_length = len(ftl_out[-1])
@@ -339,8 +340,9 @@ class TestKinematic(unittest.TestCase):
 
         model = Kinematic(2, [np.array([0.05]), np.array([0.03])], [1, 1], [50, 50], 0.5, strain_base)
         prev_g_out = model.solve_g([76, 78], [0, 0], full=False)
+        g_out = model.solve_g([74, 77], [0, 0], full=False)
 
-        _, ftl_out = model.solve_eta([-2, -1], [76, 78], [0, 0], prev_g_out)
+        _, ftl_out = model.solve_eta([-2, -1], [76, 78], [0, 0], prev_g_out, g_out)
         ftl_averages = [np.mean(array) for tube in ftl_out for array in tube]
 
         tube_length = len(ftl_out[-1])
