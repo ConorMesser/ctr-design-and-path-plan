@@ -55,7 +55,8 @@ class Static(Kinematic):
     static_basis : StaticBasis
         class defining how to calculate the basis for the static equilibrium
     """
-    def __init__(self, tube_num, q, q_dof, max_tube_length, delta_x, strain_base, ndof, radius, static_basis):
+    def __init__(self, tube_num, q, q_dof, max_tube_length, delta_x, strain_base, ndof, radius, static_basis,
+                 init_guess):
         super().__init__(tube_num, q, q_dof, max_tube_length, delta_x, strain_base)
 
         self.ndof = ndof
@@ -65,8 +66,9 @@ class Static(Kinematic):
         self.static_basis = static_basis
         self.section_indices = None
         self.theta = None
+        self.general_init_guess = init_guess
 
-    def solve_g(self, indices=None, thetas=None, initial_guess=None):
+    def solve_g(self, indices=None, thetas=None, initial_guess=None, full=False):
         if indices is None:  # default to zero insertion, with s(0) = L
             indices = [disc - 1 for disc in self.num_discrete_points]
         if thetas is None:
@@ -94,19 +96,15 @@ class Static(Kinematic):
 
         # if no initial_guess given, initialize array of zeros with 0.01 for each y, z constant bending - todo initial strain
         if initial_guess is None:
-            initial_guess = np.zeros(sum(self.ndof.values()))
-            initial_guess[3] = initial_guess[6] = 0.01
-            initial_guess[18] = initial_guess[21] = 0.01
-            if self.tube_num == 3:
-                initial_guess[30] = initial_guess[33] = 0.01
+            initial_guess = self.general_init_guess
 
-        # find root using 'Levenberg-Marquardt' method
-        solution = optimize.root(self.static_equilibrium, x0=initial_guess, method='lm')
+        # find root using MINPACKS hybrd and hybrj routines (modified Powell method)
+        solution = optimize.root(self.static_equilibrium, x0=initial_guess, method='hybr')
 
         solution_q = solution.x
+        print(solution.nfev)
         print(np.array2string(solution_q, separator=', '))
-
-        # solution_q = initial_guess
+        print('\n')
 
         # first section
         if self.tube_num == 3:
@@ -136,10 +134,32 @@ class Static(Kinematic):
         self.theta = None
         return g_full
 
-    def solve_eta(self, velocity_list, prev_insert_indices_list,
-                  delta_theta_list, prev_g):
-        print('Eta not yet supported by static model')
-        eta_out = ftl_out = [[np.zeros(6)]]
+    def solve_eta(self, velocity_list, prev_insert_indices_list, delta_theta_list, prev_g, curr_g):  # todo test
+        ftl_out = []
+        eta_out = []
+        eta_previous_tube = np.zeros(6)
+        for i in range(self.tube_num):
+            current_length = len(curr_g[i])
+            last_length = len(prev_g[i])
+            index_range = range(max(0, current_length - last_length),
+                                current_length)
+            index_adjustment = last_length - current_length
+            this_ftl_heuristic = []
+
+            # todo how to calculate screw from curr_g/prev_g difference
+            eta_here = [eta_previous_tube + curr_g[i][index_range[0]] - prev_g[i][index_range[0] + index_adjustment]]
+
+            for x in index_range:
+                g_prime = curr_g[i][x] - prev_g[i][x + index_adjustment]
+                this_g = prev_g[i][x + index_adjustment]
+                eta_r_local = big_adjoint(np.linalg.inv(this_g)) @ eta_here[0]
+                ftl_here = eta_r_local - g_prime
+                this_ftl_heuristic.append(ftl_here)
+
+            ftl_out.append(this_ftl_heuristic)
+            eta_out.append(eta_here)
+
+        eta_out = [[np.zeros(6)]]
         return eta_out, ftl_out
 
     def integrate_g(self, solution, initial_g, tube_num, section_num):
@@ -273,9 +293,9 @@ class Static(Kinematic):
         for i in range(index_length_section_1):
             index_adjusted = [i + self.section_indices.get((j, 1)) for j in range(1, 4)]
 
-            bc11_here = self.static_basis.get_basis(i, 1, 1, self.theta)
-            bg21_here = self.static_basis.get_basis(i, 2, 1, self.theta)
-            bg31_here = self.static_basis.get_basis(i, 3, 1, self.theta)
+            bc11_here = self.static_basis.get_basis(i, 1, 1, self.section_indices, self.theta)
+            bg21_here = self.static_basis.get_basis(i, 2, 1, self.section_indices, self.theta)
+            bg31_here = self.static_basis.get_basis(i, 3, 1, self.section_indices, self.theta)
 
             ksi_1_here = bc11_here @ q_1[0] + self.strain_bias
             ksi_g_21_here = bg21_here @ q_1[1]
@@ -369,8 +389,8 @@ class Static(Kinematic):
             index_adjusted = [i + self.section_indices.get((j, 2)) for j in range(2, 4)]
 
             # need 2, 32
-            bc22_here = self.static_basis.get_basis(i, 2, 2, self.theta)
-            bg32_here = self.static_basis.get_basis(i, 3, 2, self.theta)
+            bc22_here = self.static_basis.get_basis(i, 2, 2, self.section_indices, self.theta)
+            bg32_here = self.static_basis.get_basis(i, 3, 2, self.section_indices, self.theta)
 
             # need 2, 32
             ksi_2_here = bc22_here @ q_2[0] + self.strain_bias
@@ -422,7 +442,7 @@ class Static(Kinematic):
         for i in range(index_length_section_3):
             index_adjusted = i + self.section_indices.get((3, 3))
 
-            bc3_here = self.static_basis.get_basis(i, 3, 3, self.theta)
+            bc3_here = self.static_basis.get_basis(i, 3, 3, self.section_indices, self.theta)
 
             ksi_3_here = bc3_here @ q_3 + self.strain_bias
             fi_33_here = self.stiffness_matrices[self.tube_num - 1] @ (
@@ -458,14 +478,15 @@ class Static(Kinematic):
         if length == 0:
             return np.zeros(ndof)
         x_vals = np.linspace(0, length, num_points)
-        integral_collect = np.zeros((5, ndof))
+        integral_collect = np.zeros((2, ndof))
         for i in range(ndof):  # todo allow for single (interp doesn't work)
             interp_function = interpolate.interp1d(x_vals, ar_int[:, i])
-            this_iteration = [interp_function(val * length) for val in constants]
-            integral_collect[:, i] = this_iteration
+            this_iteration = map(lambda val: interp_function(val * length), constants)
+            # this_iteration = [interp_function(val * length) for val in constants]
+            integral_collect[:, i] = list(this_iteration)
 
-        combine = [w * integ for w, integ in zip(weights, integral_collect)]
-        combine2 = np.asarray(combine)
+        combine = map(lambda w, integ: w * integ, weights, integral_collect)
+        combine2 = np.asarray(list(combine))
         iteration_out = length / 2 * combine2.sum(0)
         return iteration_out
 
@@ -494,8 +515,8 @@ class Static(Kinematic):
         """
         step1 = section_index + self.gauss_coefficients_kinematic[0] - 1
         step2 = section_index + self.gauss_coefficients_kinematic[1] - 1
-        bg_here1 = self.static_basis.get_basis(step1, tube_number, section_number, self.theta)
-        bg_here2 = self.static_basis.get_basis(step2, tube_number, section_number, self.theta)
+        bg_here1 = self.static_basis.get_basis(step1, tube_number, section_number, self.section_indices, self.theta)
+        bg_here2 = self.static_basis.get_basis(step2, tube_number, section_number, self.section_indices, self.theta)
         sg = sg + (self.delta_x / 2) * (bg_here1 + bg_here2)
 
         if tube_number == section_number:
@@ -577,16 +598,20 @@ def calculate_gauss():  # todo use fewer order quadrature? could be an input
     cg2 = 1 / 2 + sqrt(3) / 6
     kinematic = [cg1, cg2]
     # Gauss quadrature coefficients for statics
-    c1 = 1 / 2 - (1 / 3) * sqrt(5 - 2 * sqrt(10 / 7)) / 2
-    c2 = 1 / 2 + (1 / 3) * sqrt(5 - 2 * sqrt(10 / 7)) / 2
-    c3 = 1 / 2 - (1 / 3) * sqrt(5 + 2 * sqrt(10 / 7)) / 2
-    c4 = 1 / 2 + (1 / 3) * sqrt(5 + 2 * sqrt(10 / 7)) / 2
-    static = [c1, c2, c3, c4, 0.5]
+    c1 = (1 / sqrt(3) + 1) / 2
+    c2 = (-1 / sqrt(3) + 1) / 2
+    static = [c1, c2]
+    # c1 = 1 / 2 - (1 / 3) * sqrt(5 - 2 * sqrt(10 / 7)) / 2
+    # c2 = 1 / 2 + (1 / 3) * sqrt(5 - 2 * sqrt(10 / 7)) / 2
+    # c3 = 1 / 2 - (1 / 3) * sqrt(5 + 2 * sqrt(10 / 7)) / 2
+    # c4 = 1 / 2 + (1 / 3) * sqrt(5 + 2 * sqrt(10 / 7)) / 2
+    # static = [c1, c2, c3, c4, 0.5]
     # Gauss quadrature weights
-    w1 = (322 + 13 * sqrt(70)) / 900
-    w3 = (322 - 13 * sqrt(70)) / 900
-    w5 = 128 / 225
-    weights = [w1, w1, w3, w3, w5]
+    weights = [0.5, 0.5]
+    # w1 = (322 + 13 * sqrt(70)) / 900
+    # w3 = (322 - 13 * sqrt(70)) / 900
+    # w5 = 128 / 225
+    # weights = [w1, w1, w3, w3, w5]
     return kinematic, static, weights
 
 

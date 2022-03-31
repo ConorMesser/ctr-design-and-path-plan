@@ -20,8 +20,8 @@ class FollowTheLeader(Heuristic):
     ----------
     ftl_magnitude : float
         The magnitude of this Heuristic's follow the leader array
-    avg_ftl : float
-        The average follow the leader based on the parent's cost
+    ftl_sum : float
+        The sum follow the leader based on the parent's cost
     generation : int
         The generation of this Heuristic (+1 from its parent's)
     """
@@ -34,24 +34,25 @@ class FollowTheLeader(Heuristic):
             magnitudes = [self.calculate_magnitude(array) for tube in follow_the_leader for array in tube]
             self.ftl_magnitude = np.mean(magnitudes)  # type: float
 
-        self.avg_ftl = self.ftl_magnitude
+        self.ftl_sum = self.ftl_magnitude
         self.generation = 0
 
     def calculate_cost_from_parent(self, parent: "FollowTheLeader", reset=False, init_insertion=False):
         if self.generation != 0 and not reset:
             print(f"Cost already calculated. Do not run method twice.")
             return
-        self.avg_ftl = self._calculate_avg(parent.avg_ftl, parent.generation, self.ftl_magnitude)
+        self.ftl_sum = self._calculate_avg(parent.ftl_sum, parent.generation, self.ftl_magnitude)
         self.generation = parent.generation + 1
 
         if init_insertion:
             self.generation = 0
+            self.ftl_sum = self.ftl_magnitude
 
     def test_cost_from_parent(self, parent: "FollowTheLeader"):
-        return self._calculate_avg(parent.avg_ftl, parent.generation, self.ftl_magnitude)
+        return self._calculate_avg(parent.ftl_sum, parent.generation, self.ftl_magnitude)
 
     @staticmethod
-    def _calculate_avg(parent_avg, parent_gen, this_ftl):
+    def _calculate_avg(parent_sum, parent_gen, this_ftl):
         """Calculate the average follow the leader cost.
 
         Uses the parent average and parent's generation (and the
@@ -59,8 +60,8 @@ class FollowTheLeader(Heuristic):
 
         Parameters
         ----------
-        parent_avg : float
-            The average magnitude from the parent
+        parent_sum : float
+            The sum magnitude from the parent
         parent_gen : int
             The generation of the parent
         this_ftl : float
@@ -71,11 +72,10 @@ class FollowTheLeader(Heuristic):
         float
             The calculated average
         """
-        prior_sum = parent_gen * parent_avg
-        return (prior_sum + this_ftl) / (parent_gen + 1)
+        return parent_sum + this_ftl
 
     def get_cost(self):
-        return self.avg_ftl
+        return self.ftl_sum
 
     def get_own_cost(self):  # todo delete? - only used for debugging visually. Is there a need for this?
         """Gets the FTL magnitude (not the average magnitude along path).
@@ -137,8 +137,8 @@ class FollowTheLeaderWInsertion(FollowTheLeader):
     ----------
     ftl_magnitude : float
         The magnitude of this Heuristic's follow the leader array
-    avg_ftl : float
-        The average follow the leader based on the parent's cost
+    ftl_sum : float
+        The sum of the follow the leader based on the parent's cost
     generation : int
         The generation of this Heuristic (+1 from its parent's)
     insertion_weight : float
@@ -154,14 +154,14 @@ class FollowTheLeaderWInsertion(FollowTheLeader):
         super().__init__(only_tip, follow_the_leader)
 
     def test_cost_from_parent(self, parent: "FollowTheLeaderWInsertion"):
-        store_avg = self.avg_ftl
-        self.avg_ftl = self._calculate_avg(parent.avg_ftl, parent.generation, self.ftl_magnitude)
+        store_avg = self.ftl_sum
+        self.ftl_sum = self._calculate_avg(parent.ftl_sum, parent.generation, self.ftl_magnitude)
         cost = self.get_cost()
-        self.avg_ftl = store_avg
+        self.ftl_sum = store_avg
         return cost
 
     def get_cost(self):
-        return self.avg_ftl + self.insertion_weight * self.insertion_fraction
+        return self.ftl_sum + self.insertion_weight * self.insertion_fraction
 
 
 class FollowTheLeaderTranslation(FollowTheLeader):

@@ -58,7 +58,8 @@ def parse_json(object_type, init_objects_file):
     return collision_objects
 
 
-def visualize_curve(curve, objects_file, tube_num, tube_rad, output_dir, filename, visualize_from_indices=None):
+def visualize_curve(curve, objects_file, tube_num, tube_rad, output_dir, filename, visualize_from_indices=None,
+                    user_adjust_view=True):
     """Save a movie showing progression of tubes in an environment
 
     Parameters
@@ -82,13 +83,25 @@ def visualize_curve(curve, objects_file, tube_num, tube_rad, output_dir, filenam
     -------
     VOID
     """
+    if user_adjust_view:
+        position_plot = pv.Plotter()
+        add_objects(position_plot, objects_file)
+
+        _ = add_single_curve(position_plot, curve[0], tube_num, tube_rad, visualize_from_indices)
+
+        movie_cpos = position_plot.show()
+    else:
+        movie_cpos = [(0, 0, 0),
+                      (0, 0, 0),
+                      (0, 0, 0)]
+
     plotter = pv.Plotter()
     full_filename = output_dir / f"{filename}.mp4"
     plotter.open_movie(full_filename, framerate=3)  # todo make smoother
 
     add_objects(plotter, objects_file)
 
-    plotter.show(auto_close=False, interactive_update=True)
+    plotter.show(auto_close=False, interactive_update=True, cpos=movie_cpos)
     plotter.write_frame()
 
     # plot each tube from root to final (only need p values, not R)
@@ -106,7 +119,8 @@ def visualize_curve(curve, objects_file, tube_num, tube_rad, output_dir, filenam
     plotter.close()
 
 
-def visualize_curve_single(curve, objects_file, tube_num, tube_rad, output_dir, filename, visualize_from_indices=None):
+def visualize_curve_single(curve, objects_file, tube_num, tube_rad, output_dir, filename, visualize_from_indices=None,
+                           user_adjust_view=True, camera_angle=None, old_plotter=None, tube_color='g'):
     """Save a picture of tubes in an environment at a certain time point
 
     curve : list[list[np.ndarray]]
@@ -128,17 +142,33 @@ def visualize_curve_single(curve, objects_file, tube_num, tube_rad, output_dir, 
     -------
 
     """
-    plotter = pv.Plotter()
+    if old_plotter is None:
+        plotter = pv.Plotter()
+        add_objects(plotter, objects_file)
+    else:
+        plotter = old_plotter
 
-    add_objects(plotter, objects_file)
+    _ = add_single_curve(plotter, curve, tube_num, tube_rad, visualize_from_indices, color=tube_color)
 
-    _ = add_single_curve(plotter, curve, tube_num, tube_rad, visualize_from_indices)
-
-    # plotter.show()  todo add functionality to show or save
     full_filename = output_dir / f"{filename}.pdf"
     plotter.save_graphic(full_filename)
 
+    # todo how to change camera angle interactively without closing the plotter??
+    # if user_adjust_view:
+    #     camera_angle = plotter.show()  # when this line returns, plotter is closed
+    #     visualize_curve_single(curve, objects_file, tube_num, tube_rad, output_dir, filename,
+    #                            visualize_from_indices, user_adjust_view=False, camera_angle=camera_angle)
+    # else:
+    #     full_filename = output_dir / f"{filename}.pdf"
+    #     plotter.camera_position = camera_angle
+    #     plotter.save_graphic(full_filename)
 
+    return plotter
+
+
+
+
+# todo remove visualize_from_indices
 def add_single_curve(plotter, curve, tube_num, tube_rad, visualize_from_indices, color='w', invert_insert=False):
     """Helper to add a single set of curves to a pyvista Plotter
 

@@ -1,5 +1,6 @@
 import pathlib
 from time import strftime
+import shutil
 
 from ctrdapp.config.parse_config import parse_config
 from ctrdapp.collision.collision_checker import CollisionChecker
@@ -31,7 +32,10 @@ def setup_script():
         output_path = path / "output" / new_name
         output_path.mkdir(parents=True)
 
+    shutil.copy(file, output_path / f"{run_name}.yaml")
+
     objects_file = path / "configuration" / configuration.get("collision_objects_filename")
+    shutil.copy(objects_file, output_path / f"{run_name}.json")
     collision_detector = CollisionChecker(objects_file)
 
     # create heuristic factory

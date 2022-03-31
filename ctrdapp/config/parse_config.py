@@ -35,8 +35,8 @@ def parse_config(file):
     general = ["tube_number", "tube_radius", "collision_objects_filename"]
     optimizers = {"nelder_mead": ["optimizer_precision", "optimize_iterations"]}
     solvers = {"rrt": ["step_bound", "iteration_number",
-                       "tube_lengths", "single_tube_control"],
-               "rrt_star": ["step_bound", "iteration_number", "tube_lengths"]}
+                       "tube_lengths", "single_tube_control", "rotation_max"],
+               "rrt_star": ["step_bound", "iteration_number", "tube_lengths", "rotation_max"]}
     models = {"kinematic": ["q_dof", "delta_x", "tube_lengths", "strain_bases"],
               "static": ["q_dof", "delta_x", "tube_lengths", "strain_bases",
                          "basis_type", "degree"]}
@@ -72,7 +72,8 @@ def parse_config(file):
                 "insertion_weight": 10,
                 "strain_bases": ["constant", "constant"],
                 "basis_type": "last_strain_base",
-                "degree": 2
+                "degree": 2,
+                "rotation_max": 0.1745
                 }
 
     with file.open(mode='r') as fid:

@@ -30,6 +30,8 @@ class TreeFromFile(RRT):
         super().__init__(model, heuristic_factory, collision_detector, configuration)
 
     def _single_iteration(self):
+        if not self.node_order:
+            return
         this_ind = self.node_order.popleft()
         this_node = self.nodes_list[this_ind]
 

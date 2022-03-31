@@ -48,8 +48,8 @@ class VisualizeUtilsTest(unittest.TestCase):
         this_ins = [4, 5]
         this_theta = [1, 1.2]
         g_out, eta_out, indices, true_insertion, ftl_heuristic = this_model.solve_integrate(delta_theta_s, delta_ins_s,
-                                                                                            this_theta, this_ins, prev_g,
-                                                                                            invert_insert=False)
+                                                                                            this_theta, this_ins,
+                                                                                            prev_g, invert_insert=False)
 
         plotter = pv.Plotter()
         add_single_curve(plotter, g_out, 2, configuration.get("tube_radius"), None)
@@ -96,7 +96,8 @@ class TestModelAndHeuristics(unittest.TestCase):
         #  the last tube, the follow the leader heuristic for the last tube should be 0
         #  other than in the local x-velocity (= pi/3)
         prev_g_out = self.model_constant2.solve_g(indices=[120, 100, 60], thetas=[0, 0, 0], full=False)
-        g_out, _, _, _, ftl_out = self.model_constant2.solve_integrate([0, 0, 0], [2, 0, 0], [0, 0, 0], [2, 10, 30], prev_g_out)
+        g_out, _, _, _, ftl_out = self.model_constant2.solve_integrate([0, 0, 0], [2, 0, 0], [0, 0, 0], [2, 10, 30],
+                                                                       prev_g_out)
 
         # visualize_curve_single(g_out, self.objects_file,
         #                        self.configuration.get("tube_number"), self.configuration.get("tube_radius"))

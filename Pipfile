@@ -8,10 +8,11 @@ verify_ssl = true
 [packages]
 numpy = ">=1.14"
 numpy-stl = "~=2.10.1"
-python-fcl = "~=0.0.12"
+python-fcl = {version = "~=0.0.12", markers="sys_platform == 'linux' or sys_platform == 'darwin'"}
+python-fcl-win32 = {version = "~=0.0.12", markers="sys_platform == 'win32'"}
 pyvista = "~=0.24.1"
 scipy = "~=1.4.1"
-PyYAML = "~=5.3"
+PyYAML = "~=5.4"
 imageio-ffmpeg = "*"
 matplotlib = "*"
 

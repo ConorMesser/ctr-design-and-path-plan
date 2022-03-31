@@ -50,22 +50,26 @@ class Kinematic(Model):
         self.q_dof = q_dof
         self.q = q
 
-    def solve_integrate(self, delta_theta, delta_insertion, this_theta,
-                        this_insertion, prev_g, invert_insert=True):
+    def solve_integrate(self, delta_theta, delta_insertion, this_theta, this_insertion, prev_g, invert_insert=True,
+                        need_g_out=True):
 
         # kinematic model is defined as s(0)=L no insertion and s=0 for full insertion
         if invert_insert:
             this_insertion = [length - ins for ins, length in zip(this_insertion, self.max_tube_length)]
             delta_insertion = [-delta_ins for delta_ins in delta_insertion]
 
-        # velocity is kept as given; it doesn't correspond to the discretization  todo impact on FTL
-        velocity = [-delta_ins for delta_ins in delta_insertion]
         prev_insertion = [ins - delta for ins, delta in zip(this_insertion, delta_insertion)]
+
         prev_insert_indices, new_insert_indices = calculate_indices(prev_insertion, this_insertion,
                                                                     self.max_tube_length, self.delta_x)
+        if need_g_out:
+            g_out = self.solve_g(indices=new_insert_indices, thetas=this_theta, full=False)
+        else:
+            g_out = [[]]
 
-        g_out = self.solve_g(indices=new_insert_indices, thetas=this_theta, full=False)
-        eta_out, ftl_out = self.solve_eta(velocity, prev_insert_indices, delta_theta, prev_g)
+        # calculating velocity based on actual indices (modified for discretization)
+        velocity = [(prev_i - new_i) * self.delta_x for new_i, prev_i in zip(new_insert_indices, prev_insert_indices)]
+        eta_out, ftl_out = self.solve_eta(velocity, prev_insert_indices, delta_theta, prev_g, g_out)
 
         if invert_insert:
             true_insertions = [length - (ind * self.delta_x) for ind, length in
@@ -125,12 +129,14 @@ class Kinematic(Model):
 
         return g_out
 
-    def solve_eta(self, velocity_list, prev_insert_indices_list,  # todo use halfway point for eta/ftl?
-                  delta_theta_list, prev_g):
+    def solve_eta(self, velocity_list, prev_insert_indices_list, delta_theta_list, prev_g, curr_g):
         """Calculates eta and follow_the_leader array for given parameters.
 
         Parameters
         ----------
+        curr_g : list[list[np.ndarray]]
+            g values for each tube,
+            where g_out[tube number] = [4x4 SE3 array]
         velocity_list : list[float]
             velocity (delta s) for each tube, previous - current(/new)
         prev_insert_indices_list : list[int]
@@ -159,8 +165,10 @@ class Kinematic(Model):
             # todo limit max delta_theta
             velocity_sum = velocity_sum + velocity_list[n]
 
+            mid_point_x = prev_insert_indices_list[n] * self.delta_x - velocity_list[n] / 2
+
             ksi_here = self.strain_base[n](
-                self.delta_x * prev_insert_indices_list[n], self.q_dof[n]) @ self.q[n] + self.strain_bias
+                mid_point_x, self.q_dof[n]) @ self.q[n] + self.strain_bias
 
             # Adjoint of this tube's g_initial puts eta in spatial (world) frame
             eta_tr1 = big_adjoint(prev_g[n][0]) * delta_theta_list[n] @ x_axis_unit
@@ -216,22 +224,29 @@ def calculate_indices(prev_insertions, next_insertions, max_tube_lengths, delta_
         --the final index values for the previous insertion
         --the final index values for the next insertion
     """
-    # todo ensure can't go past origin with multiple tubes
+    # todo check - should this change based on current insertion?
+    length_sum = 0
+    min_insertion = []
+    for i in range(len(prev_insertions)):
+        min_insertion.append(length_sum)
+        length_sum = max_tube_lengths[i]
+
     prev_insert_indices = []
     new_insert_indices = []
     for n in range(len(prev_insertions)):
         max_length = max_tube_lengths[n]
+        min_length = min_insertion[n]
 
         prev_insertion = prev_insertions[n]
         next_insertion = next_insertions[n]
 
-        if prev_insertion < 0:
-            prev_insertion = 0
+        if prev_insertion < min_length:
+            prev_insertion = min_length
         elif prev_insertion > max_length:
             prev_insertion = max_length
 
-        if next_insertion < 0:
-            next_insertion = 0
+        if next_insertion < min_length:
+            next_insertion = min_length
         elif next_insertion > max_length:
             next_insertion = max_length
 

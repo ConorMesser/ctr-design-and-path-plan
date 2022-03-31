@@ -38,12 +38,13 @@ class Model(ABC):
                                     length in max_tube_length]
 
     @abstractmethod
-    def solve_integrate(self, delta_theta, delta_insertion, this_theta,
-                        this_insertion, prev_g, invert_insert=True):
+    def solve_integrate(self, delta_theta, delta_insertion, this_theta, this_insertion, prev_g, invert_insert=True,
+                        need_g_out=True):
         """Calculate the g and eta for one step in space.
 
         Parameters
         ----------
+        need_g_out :
         delta_theta : list[float]
             change in theta values for each tube
         delta_insertion : list[float]

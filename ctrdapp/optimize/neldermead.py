@@ -41,25 +41,49 @@ class NelderMead(Optimizer):
         init_simplex = calculate_simplex(self.configuration.get('strain_bases'), radius,
                                          self.configuration.get('tube_lengths'), self.configuration.get('q_dof'),
                                          self.initial_guess)
+
+        # todo input initial simplex manually - sometimes algorithm needs finely tuned input paramaters
+        # init_simplex = [[0.02, 0.02, -0.0005, 0.02, 0.0002, 0.01, 0.02, 0.0002, 0.01, -0.0002],
+        #                 [0.02, 0.03, 0, 0.01, 0, 0.01, 0.02, 0, 0.02, 0],
+        #                 [0.04, 0.02, -0.0004, 0.01, 0, 0, 0.03, -0.0003, 0.01, 0],
+        #                 [0.01, 0.04, -0.0001, 0.03, -0.0002, 0.05, 0.02, 0.0003, 0, -0.0003],
+        #                 [0, 0.04, -0.0008, 0, 0, 0, 0.02, 0.0003, 0, 0],
+        #                 [0, 0.02, 0.0004, 0, 0, 0, 0.03, -0.0005, 0, 0],
+        #                 [0, 0.03, -0.0008, 0.02, 0.0002, 0, 0, 0, 0.02, 0],
+        #                 [0, 0.01, -0.0004, 0, 0, 0, 0.02, 0.0001, 0, 0.0003],
+        #                 [0, 0.01, -0.0001, 0.01, 0.0002, 0, 0.01, 0.0002, 0.01, -0.001],
+        #                 [0, 0.04, -0.0003, 0.04, -0.0001, 0, 0.04, 0.0002, 0.01, 0],
+        #                 [0, 0.03, 0, 0, 0, 0, 0.005, 0, 0, 0]]
+
         print(init_simplex)
-        # alter_simplex = input("Would you like to alter the simplex? (yes/no): ")
-        # if alter_simplex == 'yes':
-        #     new_simplex = input("Write updated simplex: ")
-        #     same_size = True
-        #     for i, arr in enumerate(init_simplex):
-        #         same_size = same_size and len(arr) == len(new_simplex[i])
-        #     if same_size:
-        #         init_simplex = alter_simplex
-        #     else:
-        #         print('Input was not the correct size. Using original simplex.')
+
+        # manual enter through command line
+        # todo make this a GUI
+        alter_simplex = input("Would you like to alter the simplex? (yes/no): ")
+        while alter_simplex == 'yes' or alter_simplex == 'y':
+            new_simplex = input("Write updated simplex (separate values by spaces, each iteration by semicolon (;): ")
+            new_simplex = [[int(val) for val in s.strip().split(' ')] for s in new_simplex.split(';')]
+
+            same_size = len(init_simplex) == len(new_simplex)
+            if same_size:  # if iter num is same, check num of values in each iter
+                for i, arr in enumerate(init_simplex):
+                    same_size = same_size and len(arr) == len(new_simplex[i])
+            if same_size:
+                init_simplex = new_simplex
+                alter_simplex = 'no'
+            else:
+                print('Input was not the correct size.')
+                alter_simplex = input('Would you like to enter the simplex again? (yes/no): ')
+
+        print(f'Using simplex:\n{init_simplex}')
 
         start_time = time.time()
 
         # todo allow for either initial guess or init_simplex
         optimize_result_nm = optimize.minimize(func, self.initial_guess,
                                                method='Nelder-Mead',
-                                               options={'xatol': self.precision,
-                                                        'fatol': self.precision,
+                                               options={'fatol': self.precision,
+                                                        'xatol': self.precision,
                                                         'initial_simplex': init_simplex,
                                                         'maxfev': self.configuration.get('optimize_iterations')})
         end_time = time.time()
@@ -106,7 +130,7 @@ class NelderMead(Optimizer):
             self.best_solver = {'cost': cost, 'solver': this_solver}
 
         self.count += 1
-        print(self.count)
+        print(f'{self.count} - Cost: {cost}, Solution: {this_solver.found_solution}, Q: {x}')
 
         return cost
 
